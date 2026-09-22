@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
+    "bplist-creator": "^0.3.0",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.9.0",
     "@typescript-eslint/eslint-plugin": "^8.14.0",
@@ -26,6 +27,9 @@
     "vitest": "^2.1.4"
   },
   "dependencies": {
-    "better-sqlite3": "^11.5.0"
+    "better-sqlite3": "^11.5.0",
+    "bplist-parser": "^0.5.0",
+    "fast-xml-parser": "^5.11.1",
+    "imapflow": "^2.0.6"
   }
 }
