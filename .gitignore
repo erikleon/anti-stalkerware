@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Never commit real vault data, model weights, or captured messages.
+*.vault
+*.db
+*.db-wal
+*.db-shm
+models/
+test-results/
+playwright-report/
+coverage/
+
+# Secrets
+.env
+*.pem
+*.key
