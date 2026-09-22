@@ -44,6 +44,7 @@ describe("canUnlockOsint against the real SqliteVaultStore", () => {
   const abusiveMessage: Message = {
     id: "msg-1",
     rawRecordHash: "hash-1",
+    source: "imessage",
     threadId: "thread-a",
     sender: "stalker@example.com",
     fromSelf: false,

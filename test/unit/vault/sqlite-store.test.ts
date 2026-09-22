@@ -23,6 +23,7 @@ function buildMessage(overrides: Partial<Message> = {}): Message {
   return {
     id: "msg-1",
     rawRecordHash: "hash-1",
+    source: "imessage",
     threadId: "thread-a",
     sender: "stalker@example.com",
     fromSelf: false,

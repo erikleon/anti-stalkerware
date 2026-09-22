@@ -124,6 +124,7 @@ function normalizeRow(row: JoinedRow): IngestResult {
   const message: Message = {
     id: row.guid,
     rawRecordHash: raw.hash,
+    source: "imessage",
     threadId: row.chat_identifier,
     sender: row.handle_identifier ?? "unknown",
     fromSelf: row.is_from_me === 1n,

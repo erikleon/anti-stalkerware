@@ -37,6 +37,8 @@ export interface Message {
   id: string;
   /** Hash of the RawRecord this message was derived from. */
   rawRecordHash: string;
+  /** Which ingest source this came from — needed to detect a sender switching channels (e.g. texting, then suddenly emailing). */
+  source: SourceKind;
   threadId: string;
   sender: string;
   /** True if the app's own account sent this message. */

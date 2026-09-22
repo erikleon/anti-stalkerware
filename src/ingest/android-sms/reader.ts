@@ -97,6 +97,7 @@ function normalizeSms(raw: RawSmsElement, index: number): IngestResult {
   const message: Message = {
     id: rawRecord.id,
     rawRecordHash: rawRecord.hash,
+    source: "android-sms",
     threadId: normalizePhoneNumber(raw.address),
     sender: raw.address,
     // type 2 = sent by the device owner; anything else (1 = received, etc.) is from the other party.

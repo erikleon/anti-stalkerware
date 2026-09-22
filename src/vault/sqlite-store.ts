@@ -46,6 +46,7 @@ export class SqliteVaultStore implements VaultStore {
       CREATE TABLE IF NOT EXISTS messages (
         message_id TEXT NOT NULL,
         raw_record_hash TEXT NOT NULL,
+        source TEXT NOT NULL,
         thread_id TEXT NOT NULL,
         sender TEXT NOT NULL,
         from_self INTEGER NOT NULL,
@@ -86,12 +87,13 @@ export class SqliteVaultStore implements VaultStore {
     this.db
       .prepare(
         `INSERT OR IGNORE INTO messages
-          (message_id, raw_record_hash, thread_id, sender, from_self, text, sent_at, provenance, edit_history, retracted_at, crosses_abuse_threshold, appended_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (message_id, raw_record_hash, source, thread_id, sender, from_self, text, sent_at, provenance, edit_history, retracted_at, crosses_abuse_threshold, appended_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         message.id,
         message.rawRecordHash,
+        message.source,
         message.threadId,
         message.sender,
         message.fromSelf ? 1 : 0,
@@ -172,6 +174,7 @@ export class SqliteVaultStore implements VaultStore {
     const message: Message = {
       id: row.message_id,
       rawRecordHash: row.raw_record_hash,
+      source: row.source as Message["source"],
       threadId: row.thread_id,
       sender: row.sender,
       fromSelf: row.from_self === 1,
@@ -196,6 +199,7 @@ export class SqliteVaultStore implements VaultStore {
 interface MessageRow {
   message_id: string;
   raw_record_hash: string;
+  source: string;
   thread_id: string;
   sender: string;
   from_self: number;

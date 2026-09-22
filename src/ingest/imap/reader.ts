@@ -105,6 +105,7 @@ async function normalizeMessage(
     const message: Message = {
       id: raw.id,
       rawRecordHash: raw.hash,
+      source: "imap",
       threadId: senderAddress,
       sender: senderAddress,
       fromSelf: false,

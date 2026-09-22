@@ -68,6 +68,7 @@ describe("initializeVault + openVault", () => {
       {
         id: "msg-1",
         rawRecordHash: "hash-1",
+        source: "imessage",
         threadId: "thread-a",
         sender: "stalker@example.com",
         fromSelf: false,
@@ -92,7 +93,7 @@ describe("initializeVault + openVault", () => {
     const first = await openVault(dir, "pass");
     await first.store.append(
       { id: "raw-1", source: "imessage", payload: Buffer.from("raw"), acquiredAt: new Date(), hash: "hash-1", parserVersion: "1" },
-      { id: "msg-1", rawRecordHash: "hash-1", threadId: "thread-a", sender: "s", fromSelf: false, text: "persisted", sentAt: new Date(), provenance: "live" },
+      { id: "msg-1", rawRecordHash: "hash-1", source: "imessage", threadId: "thread-a", sender: "s", fromSelf: false, text: "persisted", sentAt: new Date(), provenance: "live" },
     );
     first.close();
 

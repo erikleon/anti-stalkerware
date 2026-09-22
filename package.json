@@ -32,6 +32,7 @@
     "bplist-parser": "^0.5.0",
     "fast-xml-parser": "^5.11.1",
     "imapflow": "^2.0.6",
-    "mailparser": "^3.9.28"
+    "mailparser": "^3.9.28",
+    "onnxruntime-node": "^1.30.0"
   }
 }
