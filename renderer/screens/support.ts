@@ -56,5 +56,15 @@ export function renderSupportScreen(container: Element, options: { onBack?: () =
 
   pane.append(el("p", {}, ["If you're in immediate physical danger, contact local emergency services."]));
 
+  pane.append(
+    el("h1", { style: "font-size:13px;margin-top:8px;" }, ["If someone is forcing you to unlock this"]),
+    el("p", {}, [
+      "There's no hidden second passphrase here that opens a fake or empty vault. Typing the real passphrase opens the real vault; anything else just fails. A decoy that gets noticed can make a dangerous situation worse — so this app doesn't try to have one.",
+    ]),
+    el("p", {}, [
+      "Your safety comes first. If you're physically forced to unlock a device, it's reasonable to comply. The best defense is not being caught with it open in the first place — press Ctrl+Shift+Esc (⌘+Shift+Esc on a Mac) any time to hide the window instantly, before anyone can demand you unlock it at all.",
+    ]),
+  );
+
   mount(container, pane);
 }

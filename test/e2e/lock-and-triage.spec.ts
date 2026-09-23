@@ -85,8 +85,12 @@ test.describe("first run: create a vault and reach triage", () => {
     const window = await app.firstWindow();
 
     await window.locator("text=Help").click();
-    await expect(window.locator("h1")).toHaveText("Support and resources");
+    await expect(window.locator("h1").first()).toHaveText("Support and resources");
     await expect(window.locator("text=1-800-799-7233")).toBeVisible();
+
+    // TODOS item 3's decision: no duress mechanism, documented plainly, reachable pre-passphrase.
+    await expect(window.getByText("If someone is forcing you to unlock this")).toBeVisible();
+    await expect(window.getByText(/no hidden second passphrase/i)).toBeVisible();
 
     await app.close();
   });

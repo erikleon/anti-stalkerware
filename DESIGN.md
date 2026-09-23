@@ -224,6 +224,37 @@ These three numbers are stable, long-standing national services —
 reasonable to hardcode. Whether to make the list configurable (for
 international users, or regional resources) is a real product question
 for later, not decided here.
+
+## Coerced unlock (TODOS item 3 — decided 2026-09-23)
+
+What happens when an abuser is physically present and demands the vault
+be unlocked. Considered against real DV-tech-abuse literature, which
+documents a specific failure mode for the tempting-sounding fix: a duress
+passphrase that opens a decoy or empty vault protects someone only as
+long as the abuser doesn't know the pattern exists or doesn't notice
+something's off about an oddly-sparse "real" vault — and a noticed decoy
+can escalate a dangerous situation rather than defuse it. A one-way
+duress-wipe passphrase avoids that specific failure but destroys the
+evidence the instant it's used, which conflicts with the vault's whole
+purpose and has no undo.
+
+**Decided: no special handling.** There is no second passphrase, no
+decoy state, no duress wipe. Typing the real passphrase opens the real
+vault; anything else fails the same way a wrong passphrase always has
+(D19). The app says this plainly on the Support and resources screen —
+reachable both pre-passphrase from the lock screen's "Help" link and
+from the main app nav — rather than leaving it undiscovered until
+someone needs it under pressure.
+
+The actual first line of defense is the existing panic-hide hotkey
+(Ctrl+Shift+Esc / Cmd+Shift+Esc, `main/index.ts`): never being caught
+with the vault open is a stronger safety property than anything a
+duress mechanism inside an already-open, already-demanded-open app
+could offer. The Support screen's copy says this directly, and states
+without hedging that if someone is physically forcing a device unlock,
+complying is the reasonable choice — this app's contents are not worth
+more than the person's safety.
+
 ## Diff against Jigsaw's Harassment Manager
 
 Retroactive check per TODOS.md item 1 — read the real component structure
