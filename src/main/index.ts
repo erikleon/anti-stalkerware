@@ -12,8 +12,14 @@ import { registerHandlers } from "./handlers";
 // exactly the kind of thing that surfaces on a lock screen someone else can see.
 
 const PANIC_HOTKEY = "CommandOrControl+Shift+Escape";
+// How often to check for inactivity, not how long a session can idle —
+// that's Settings' autoLockMinutes, checked fresh every tick since it can
+// change at runtime. 30s keeps the worst-case lag between "idle long
+// enough" and actually locking small without polling pointlessly often.
+const AUTO_LOCK_CHECK_INTERVAL_MS = 30_000;
 
 let mainWindow: BrowserWindow | null = null;
+let autoLockTimer: ReturnType<typeof setInterval> | undefined;
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -40,6 +46,27 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
+/**
+ * Locks the vault after autoLockMinutes of no IPC activity (see
+ * VaultSession.touch, called on every request in handlers.ts). Pushes
+ * vault:locked to the renderer afterward, since nothing there is polling
+ * for this — a lock main decided on its own has to be told, not asked
+ * about. autoLockMinutes of 0 disables this entirely (Settings' choice
+ * each tick, not a fixed decision at startup).
+ */
+function registerAutoLock(session: VaultSession, settings: SettingsStore, window: BrowserWindow): void {
+  autoLockTimer = setInterval(() => {
+    void (async () => {
+      const { autoLockMinutes } = await settings.get();
+      if (autoLockMinutes <= 0) return;
+      if (session.isIdle(autoLockMinutes * 60 * 1000)) {
+        session.lock();
+        window.webContents.send("vault:locked");
+      }
+    })();
+  }, AUTO_LOCK_CHECK_INTERVAL_MS);
+}
+
 function registerPanicHotkey(window: BrowserWindow): void {
   // Hides the window instantly on demand. This must never leave a preview
   // behind in the dock, the window switcher, or a thumbnail — that's a
@@ -59,12 +86,14 @@ app.whenReady().then(() => {
   mainWindow = createWindow();
   registerHandlers(session, settings, mainWindow);
   registerPanicHotkey(mainWindow);
+  registerAutoLock(session, settings, mainWindow);
 
   app.on("before-quit", () => session.lock());
 });
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  if (autoLockTimer) clearInterval(autoLockTimer);
 });
 
 app.on("window-all-closed", () => {

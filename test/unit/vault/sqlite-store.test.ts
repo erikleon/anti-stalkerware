@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -200,6 +200,22 @@ describe("SqliteVaultStore", () => {
     const fileBytes = readFileSync(dbPath);
     expect(fileBytes.includes("SECRET_TEXT_MARKER")).toBe(false);
     expect(fileBytes.includes("SECRET_RAW_MARKER")).toBe(false);
+  });
+
+  it("message text and raw payloads are not stored as plaintext in the WAL file either (TODOS item 2)", async () => {
+    // Encryption happens at the application layer, before the encrypted
+    // bytes ever reach better-sqlite3 — a WAL frame is just a page image
+    // of whatever was written, so if the main file never holds plaintext,
+    // neither can its WAL. Verified directly rather than assumed: this is
+    // the file an adversary with a live, unlocked-session read on the
+    // disk (not just the checkpointed main db) would actually see first.
+    await store.append(buildRaw({ payload: Buffer.from("SECRET_RAW_WAL_MARKER") }), buildMessage({ text: "SECRET_TEXT_WAL_MARKER" }));
+
+    const walPath = `${dbPath}-wal`;
+    expect(existsSync(walPath)).toBe(true); // journal_mode=WAL is set in the constructor; a fresh write should still be sitting there, not yet checkpointed
+    const walBytes = readFileSync(walPath);
+    expect(walBytes.includes("SECRET_TEXT_WAL_MARKER")).toBe(false);
+    expect(walBytes.includes("SECRET_RAW_WAL_MARKER")).toBe(false);
   });
 
   it("has no UPDATE or DELETE statement anywhere in its source — append-only by construction, not just by convention", async () => {

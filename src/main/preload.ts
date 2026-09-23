@@ -14,6 +14,11 @@ const api: AntistalkerApi = {
     unlock: (passphrase) => ipcRenderer.invoke("vault:unlock", passphrase),
     lock: () => ipcRenderer.invoke("vault:lock"),
     isUnlocked: () => ipcRenderer.invoke("vault:isUnlocked"),
+    onLocked: (callback) => {
+      const listener = () => callback();
+      ipcRenderer.on("vault:locked", listener);
+      return () => ipcRenderer.removeListener("vault:locked", listener);
+    },
   },
   triage: {
     listRows: (bucket) => ipcRenderer.invoke("triage:listRows", bucket),
@@ -35,6 +40,7 @@ const api: AntistalkerApi = {
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),
     setToastOnTriageAction: (value) => ipcRenderer.invoke("settings:setToastOnTriageAction", value),
+    setAutoLockMinutes: (value) => ipcRenderer.invoke("settings:setAutoLockMinutes", value),
     listSources: () => ipcRenderer.invoke("settings:listSources"),
   },
   destroy: {

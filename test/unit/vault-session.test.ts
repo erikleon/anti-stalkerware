@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -57,5 +57,63 @@ describe("VaultSession", () => {
     const session2 = new VaultSession(corruptDir);
     await expect(session2.unlock("anything")).resolves.toBe(false);
     expect(session2.isUnlocked()).toBe(false);
+  });
+
+  describe("isIdle", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("a locked (never-unlocked) session is never idle, regardless of elapsed time", () => {
+      const session = new VaultSession(join(dir, "vault"));
+      vi.advanceTimersByTime(1000 * 60 * 60);
+      expect(session.isIdle(1000)).toBe(false);
+    });
+
+    it("is not idle before the timeout elapses, and is idle after", async () => {
+      const session = new VaultSession(join(dir, "vault"));
+      await session.initialize("correct horse battery staple");
+
+      vi.advanceTimersByTime(4 * 60 * 1000);
+      expect(session.isIdle(5 * 60 * 1000)).toBe(false);
+
+      vi.advanceTimersByTime(2 * 60 * 1000);
+      expect(session.isIdle(5 * 60 * 1000)).toBe(true);
+      session.lock();
+    });
+
+    it("touch() resets the clock", async () => {
+      const session = new VaultSession(join(dir, "vault"));
+      await session.initialize("correct horse battery staple");
+
+      vi.advanceTimersByTime(4 * 60 * 1000);
+      session.touch();
+      vi.advanceTimersByTime(4 * 60 * 1000);
+      expect(session.isIdle(5 * 60 * 1000)).toBe(false);
+      session.lock();
+    });
+
+    it("unlock() itself counts as activity — time spent on the lock screen before unlocking doesn't count against the new session", async () => {
+      const session = new VaultSession(join(dir, "vault"));
+      await session.initialize("correct horse battery staple");
+      session.lock();
+
+      vi.advanceTimersByTime(10 * 60 * 1000); // idle while locked, e.g. sitting on the lock screen
+      await session.unlock("correct horse battery staple");
+      expect(session.isIdle(5 * 60 * 1000)).toBe(false);
+      session.lock();
+    });
+
+    it("lock() itself doesn't need to reset anything — isIdle is already false once locked", async () => {
+      const session = new VaultSession(join(dir, "vault"));
+      await session.initialize("correct horse battery staple");
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      session.lock();
+      expect(session.isIdle(5 * 60 * 1000)).toBe(false);
+    });
   });
 });

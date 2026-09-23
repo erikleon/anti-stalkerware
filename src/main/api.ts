@@ -22,6 +22,8 @@ export interface UnlockResult {
 
 export interface Settings {
   toastOnTriageAction: boolean;
+  /** Minutes of inactivity before the vault auto-locks. 0 disables it. */
+  autoLockMinutes: number;
 }
 
 export interface SourceStatus {
@@ -78,6 +80,8 @@ export interface AntistalkerApi {
     unlock(passphrase: string): Promise<UnlockResult>;
     lock(): Promise<void>;
     isUnlocked(): Promise<boolean>;
+    /** Fires when the main process auto-locks the vault after inactivity — the one push (not request/response) channel in this API, since the renderer can't poll for something main decides on its own timer. Returns an unsubscribe function. */
+    onLocked(callback: () => void): () => void;
   };
   triage: {
     listRows(bucket: Bucket): Promise<TriageRow[]>;
@@ -99,6 +103,7 @@ export interface AntistalkerApi {
   settings: {
     get(): Promise<Settings>;
     setToastOnTriageAction(value: boolean): Promise<void>;
+    setAutoLockMinutes(value: number): Promise<void>;
     listSources(): Promise<SourceStatus[]>;
   };
   userContext: {

@@ -5,6 +5,7 @@ export async function renderSettingsScreen(
   navigateToDestroy: () => void,
   navigateToOnboarding: (source: SourceKind) => void,
   navigateToBoundaries: () => void,
+  lockNow: () => void,
 ): Promise<void> {
   const settings = await window.antistalker.settings.get();
   let sources = await window.antistalker.settings.listSources();
@@ -77,6 +78,25 @@ export async function renderSettingsScreen(
     });
     toggleRow.append(checkbox, el("span", {}, ["Show a confirmation toast after Hide / Mark reviewed"]));
     pane.append(toggleRow);
+
+    const autoLockRow = el("div", { class: "field", style: "max-width:280px;" });
+    const autoLockInput = el("input", { type: "number", min: "0", step: "1" }) as HTMLInputElement;
+    autoLockInput.value = String(settings.autoLockMinutes);
+    autoLockInput.addEventListener("change", async () => {
+      const minutes = Math.max(0, Math.floor(Number(autoLockInput.value) || 0));
+      autoLockInput.value = String(minutes);
+      await window.antistalker.settings.setAutoLockMinutes(minutes);
+      settings.autoLockMinutes = minutes;
+    });
+    autoLockRow.append(
+      el("label", {}, ["Auto-lock after this many minutes of inactivity (0 to disable)"]),
+      autoLockInput,
+    );
+    pane.append(autoLockRow);
+
+    const lockNowBtn = el("button", { type: "button", class: "btn" }, ["Lock now"]);
+    lockNowBtn.addEventListener("click", lockNow);
+    pane.append(lockNowBtn);
 
     const boundariesRow = el("div", { class: "list-block", style: "margin-top:8px;" });
     const boundariesLink = el("div", { class: "list-block-row", style: "flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" });

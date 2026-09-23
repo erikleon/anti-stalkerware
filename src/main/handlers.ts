@@ -44,10 +44,16 @@ function requireVault(session: VaultSession) {
  * test suite's enumeration keeps working against the real app, not just
  * against test doubles) and wires the result to ipcMain.handle in the same
  * place, so a channel can never be registered without also being bound.
+ * Every call also resets the inactivity clock (see VaultSession.touch) —
+ * a real request from the renderer is by definition real activity, and
+ * this is the one place every one of them passes through.
  */
-function bind<Args extends unknown[], Result>(channel: string, handler: IpcHandler<Args, Result>): void {
+function bind<Args extends unknown[], Result>(session: VaultSession, channel: string, handler: IpcHandler<Args, Result>): void {
   const registered = registerHandler(channel, handler);
-  ipcMain.handle(channel, (_event, ...args) => registered(...(args as Args)));
+  ipcMain.handle(channel, (_event, ...args) => {
+    session.touch();
+    return registered(...(args as Args));
+  });
 }
 
 function bindGated<Args extends unknown[], Result>(
@@ -57,36 +63,39 @@ function bindGated<Args extends unknown[], Result>(
   handler: IpcHandler<Args, Result>,
 ): void {
   const registered = registerGated(channel, sender, () => session.current()?.store, handler);
-  ipcMain.handle(channel, (_event, ...args) => registered(...(args as Args)));
+  ipcMain.handle(channel, (_event, ...args) => {
+    session.touch();
+    return registered(...(args as Args));
+  });
 }
 
 /** Registers every IPC channel the renderer can call — the concrete implementation behind window.antistalker (api.ts / preload.ts). */
 export function registerHandlers(session: VaultSession, settings: SettingsStore, mainWindow: BrowserWindow): void {
-  bind<[], boolean>("vault:exists", async () => session.exists());
-  bind<[string], UnlockResult>("vault:initialize", async (passphrase) => ({ ok: await session.initialize(passphrase) }));
-  bind<[string], UnlockResult>("vault:unlock", async (passphrase) => ({ ok: await session.unlock(passphrase) }));
-  bind<[], void>("vault:lock", async () => session.lock());
-  bind<[], boolean>("vault:isUnlocked", async () => session.isUnlocked());
+  bind<[], boolean>(session, "vault:exists", async () => session.exists());
+  bind<[string], UnlockResult>(session, "vault:initialize", async (passphrase) => ({ ok: await session.initialize(passphrase) }));
+  bind<[string], UnlockResult>(session, "vault:unlock", async (passphrase) => ({ ok: await session.unlock(passphrase) }));
+  bind<[], void>(session, "vault:lock", async () => session.lock());
+  bind<[], boolean>(session, "vault:isUnlocked", async () => session.isUnlocked());
 
-  bind<[Bucket], TriageRow[]>("triage:listRows", async (bucket) => {
+  bind<[Bucket], TriageRow[]>(session, "triage:listRows", async (bucket) => {
     const vault = requireVault(session);
     const rows = await listTriageRows(vault.store, vault.triageState, vault.userContext);
     return rows.filter((row) => matchesBucket(row, bucket));
   });
-  bind<[], Record<Bucket, number>>("triage:counts", async () => {
+  bind<[], Record<Bucket, number>>(session, "triage:counts", async () => {
     const vault = requireVault(session);
     const rows = await listTriageRows(vault.store, vault.triageState, vault.userContext);
     return countByBucket(rows);
   });
-  bind<[string], Message[]>("triage:listMessages", async (threadId) => requireVault(session).store.list(threadId));
-  bind<[string, boolean], void>("triage:setReviewed", async (messageId, reviewed) => {
+  bind<[string], Message[]>(session, "triage:listMessages", async (threadId) => requireVault(session).store.list(threadId));
+  bind<[string, boolean], void>(session, "triage:setReviewed", async (messageId, reviewed) => {
     requireVault(session).triageState.setReviewed(messageId, reviewed);
   });
-  bind<[string, boolean], void>("triage:setHidden", async (messageId, hidden) => {
+  bind<[string, boolean], void>(session, "triage:setHidden", async (messageId, hidden) => {
     requireVault(session).triageState.setHidden(messageId, hidden);
   });
 
-  bind<[], OsintSenderEligibility[]>("osint:eligibleSenders", async () => listEligibility(requireVault(session).store));
+  bind<[], OsintSenderEligibility[]>(session, "osint:eligibleSenders", async () => listEligibility(requireVault(session).store));
   // The only OSINT-reaching channel, so the only one that goes through
   // registerGated. Always returns [] today — no live signal-gathering
   // collector exists yet (deliberately deferred; see the plan). The gate
@@ -94,19 +103,20 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
   // abuse threshold in the vault.
   bindGated<[string], RankedLead[]>("osint:rank", (sender) => sender, session, async () => rankCandidates([]));
 
-  bind<[], Message[]>("vaultExport:listAll", async () => listAllMessages(requireVault(session).store));
-  bind<[], string>("vaultExport:disclosureText", async () => EXPORT_DISCLOSURE_TEXT);
-  bind<[], ExportResult | undefined>("vaultExport:exportToFile", async () => exportToFile(session, mainWindow));
-  bind<[], ExportHistoryEntry[]>("vaultExport:history", async () => {
+  bind<[], Message[]>(session, "vaultExport:listAll", async () => listAllMessages(requireVault(session).store));
+  bind<[], string>(session, "vaultExport:disclosureText", async () => EXPORT_DISCLOSURE_TEXT);
+  bind<[], ExportResult | undefined>(session, "vaultExport:exportToFile", async () => exportToFile(session, mainWindow));
+  bind<[], ExportHistoryEntry[]>(session, "vaultExport:history", async () => {
     const events = await requireVault(session).integrityLog.list();
     return events
       .filter((e) => e.kind === "export")
       .map((e) => ({ occurredAt: e.occurredAt, recordCount: e.recordHashes.length }));
   });
 
-  bind<[], Settings>("settings:get", async () => settings.get());
-  bind<[boolean], void>("settings:setToastOnTriageAction", async (value) => settings.setToastOnTriageAction(value));
-  bind<[], SourceStatus[]>("settings:listSources", async () => {
+  bind<[], Settings>(session, "settings:get", async () => settings.get());
+  bind<[boolean], void>(session, "settings:setToastOnTriageAction", async (value) => settings.setToastOnTriageAction(value));
+  bind<[number], void>(session, "settings:setAutoLockMinutes", async (value) => settings.setAutoLockMinutes(value));
+  bind<[], SourceStatus[]>(session, "settings:listSources", async () => {
     const vault = requireVault(session);
     return SOURCE_LABELS.map(({ source, label }) => ({
       source,
@@ -115,39 +125,39 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
     }));
   });
 
-  bind<[], string | undefined>("onboarding:pickFile", async () => {
+  bind<[], string | undefined>(session, "onboarding:pickFile", async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, { properties: ["openFile"] });
     return canceled ? undefined : filePaths[0];
   });
-  bind<[string], MetadataSweepResult[]>("onboarding:sweepImessage", async (dbPath) => onboarding.sweepImessage(dbPath));
-  bind<[string], MetadataSweepResult[]>("onboarding:sweepAndroidSms", async (exportFilePath) => onboarding.sweepAndroidSms(exportFilePath));
-  bind<[ImapConnectionInput], MetadataSweepResult[]>("onboarding:sweepImap", async (connection) => onboarding.sweepImap(connection));
-  bind<[string, string[]], SyncResult>("onboarding:connectImessage", async (dbPath, selected) =>
+  bind<[string], MetadataSweepResult[]>(session, "onboarding:sweepImessage", async (dbPath) => onboarding.sweepImessage(dbPath));
+  bind<[string], MetadataSweepResult[]>(session, "onboarding:sweepAndroidSms", async (exportFilePath) => onboarding.sweepAndroidSms(exportFilePath));
+  bind<[ImapConnectionInput], MetadataSweepResult[]>(session, "onboarding:sweepImap", async (connection) => onboarding.sweepImap(connection));
+  bind<[string, string[]], SyncResult>(session, "onboarding:connectImessage", async (dbPath, selected) =>
     onboarding.connectImessage(requireVault(session), dbPath, selected),
   );
-  bind<[string, string[]], SyncResult>("onboarding:connectAndroidSms", async (exportFilePath, selected) =>
+  bind<[string, string[]], SyncResult>(session, "onboarding:connectAndroidSms", async (exportFilePath, selected) =>
     onboarding.connectAndroidSms(requireVault(session), exportFilePath, selected),
   );
-  bind<[ImapConnectionInput, string[]], SyncResult>("onboarding:connectImap", async (connection, selected) =>
+  bind<[ImapConnectionInput, string[]], SyncResult>(session, "onboarding:connectImap", async (connection, selected) =>
     onboarding.connectImapSource(requireVault(session), connection, selected),
   );
-  bind<[SourceKind], SyncResult>("onboarding:syncNow", async (source) => onboarding.syncNow(requireVault(session), source));
-  bind<[SourceKind], void>("onboarding:disconnect", async (source) => onboarding.disconnect(requireVault(session), source));
+  bind<[SourceKind], SyncResult>(session, "onboarding:syncNow", async (source) => onboarding.syncNow(requireVault(session), source));
+  bind<[SourceKind], void>(session, "onboarding:disconnect", async (source) => onboarding.disconnect(requireVault(session), source));
 
-  bind<[], StoredBoundary[]>("userContext:listBoundaries", async () => requireVault(session).userContext.listBoundaries());
-  bind<[string, Date, string | undefined], StoredBoundary>("userContext:addBoundary", async (description, setAt, appliesToSender) =>
+  bind<[], StoredBoundary[]>(session, "userContext:listBoundaries", async () => requireVault(session).userContext.listBoundaries());
+  bind<[string, Date, string | undefined], StoredBoundary>(session, "userContext:addBoundary", async (description, setAt, appliesToSender) =>
     requireVault(session).userContext.addBoundary({ description, setAt, ...(appliesToSender ? { appliesToSender } : {}) }),
   );
-  bind<[string], void>("userContext:removeBoundary", async (id) => requireVault(session).userContext.removeBoundary(id));
-  bind<[], StoredTaggedPhrase[]>("userContext:listTaggedPhrases", async () => requireVault(session).userContext.listTaggedPhrases());
-  bind<[string, string], StoredTaggedPhrase>("userContext:addTaggedPhrase", async (phrase, note) =>
+  bind<[string], void>(session, "userContext:removeBoundary", async (id) => requireVault(session).userContext.removeBoundary(id));
+  bind<[], StoredTaggedPhrase[]>(session, "userContext:listTaggedPhrases", async () => requireVault(session).userContext.listTaggedPhrases());
+  bind<[string, string], StoredTaggedPhrase>(session, "userContext:addTaggedPhrase", async (phrase, note) =>
     requireVault(session).userContext.addTaggedPhrase({ phrase, note }),
   );
-  bind<[string], void>("userContext:removeTaggedPhrase", async (id) => requireVault(session).userContext.removeTaggedPhrase(id));
+  bind<[string], void>(session, "userContext:removeTaggedPhrase", async (id) => requireVault(session).userContext.removeTaggedPhrase(id));
 
-  bind<[], string>("destroy:disclosureText", async () => DESTROY_DISCLOSURE_TEXT);
-  bind<[], string>("destroy:confirmationPhrase", async () => DESTROY_CONFIRMATION_PHRASE);
-  bind<[string], DestroyResult>("destroy:confirm", async (typedPhrase) => {
+  bind<[], string>(session, "destroy:disclosureText", async () => DESTROY_DISCLOSURE_TEXT);
+  bind<[], string>(session, "destroy:confirmationPhrase", async () => DESTROY_CONFIRMATION_PHRASE);
+  bind<[string], DestroyResult>(session, "destroy:confirm", async (typedPhrase) => {
     if (!confirmationMatches({ expectedPhrase: DESTROY_CONFIRMATION_PHRASE, typedPhrase })) {
       return { removed: false, filesRemoved: [] };
     }

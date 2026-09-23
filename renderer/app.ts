@@ -12,7 +12,7 @@ import { renderBoundariesScreen } from "./screens/boundaries.js";
 
 type AppState =
   | { kind: "loading" }
-  | { kind: "lock"; mode: "create" | "unlock"; error?: string }
+  | { kind: "lock"; mode: "create" | "unlock"; error?: string; info?: string }
   | { kind: "support-standalone" }
   | { kind: "unlocked"; screen: Screen; onboardingSource?: SourceKind };
 
@@ -21,9 +21,9 @@ if (!root) throw new Error("missing #app root element");
 
 let state: AppState = { kind: "loading" };
 
-async function boot(): Promise<void> {
+async function boot(info?: string): Promise<void> {
   const exists = await window.antistalker.vault.exists();
-  state = { kind: "lock", mode: exists ? "unlock" : "create" };
+  state = { kind: "lock", mode: exists ? "unlock" : "create", ...(info ? { info } : {}) };
   render();
 }
 
@@ -51,6 +51,7 @@ function render(): void {
     renderLockScreen(root!, {
       mode: state.mode,
       ...(state.error ? { error: state.error } : {}),
+      ...(state.info ? { info: state.info } : {}),
       onSubmit: (passphrase) => void submitPassphrase(passphrase),
       onHelp: () => {
         state = { kind: "support-standalone" };
@@ -99,6 +100,9 @@ function render(): void {
           render();
         },
         () => navigate("boundaries"),
+        () => {
+          void window.antistalker.vault.lock().then(() => boot());
+        },
       );
       break;
     case "destroy":
@@ -121,5 +125,12 @@ function navigate(screen: Screen): void {
   state = { kind: "unlocked", screen };
   render();
 }
+
+// Main decides an idle lockout on its own timer — nothing here is polling
+// for it, so it has to be pushed. Re-running boot() is safe from any
+// screen: it just re-checks vault existence and shows the lock screen.
+window.antistalker.vault.onLocked(() => {
+  void boot("Locked after inactivity.");
+});
 
 void boot();

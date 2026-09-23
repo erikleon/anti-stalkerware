@@ -9,8 +9,19 @@ import { initializeVault, openVault, vaultExists, type Vault } from "../vault/va
  */
 export class VaultSession {
   private vault: Vault | undefined;
+  private lastActivityAt = Date.now();
 
   constructor(private readonly vaultDir: string) {}
+
+  /** Called on every IPC request that reaches an unlocked vault (see handlers.ts's bind()) — any real use of the app resets the inactivity clock. */
+  touch(): void {
+    this.lastActivityAt = Date.now();
+  }
+
+  /** True once `timeoutMs` has passed with no touch() call. A locked/never-unlocked session is never "idle" — there's nothing to time out. */
+  isIdle(timeoutMs: number): boolean {
+    return this.isUnlocked() && Date.now() - this.lastActivityAt >= timeoutMs;
+  }
 
   get vaultDirectory(): string {
     return this.vaultDir;
@@ -43,6 +54,7 @@ export class VaultSession {
   async unlock(passphrase: string): Promise<boolean> {
     try {
       this.vault = await openVault(this.vaultDir, passphrase);
+      this.touch();
       return true;
     } catch (err) {
       // Never sent to the renderer (that's the whole point — see the doc

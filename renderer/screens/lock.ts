@@ -4,6 +4,8 @@ import { ICONS } from "../icons.js";
 export interface LockScreenOptions {
   mode: "create" | "unlock";
   error?: string;
+  /** A neutral (non-error) note — e.g. "Locked after inactivity" — distinct from a failed unlock attempt. */
+  info?: string;
   onSubmit: (passphrase: string) => void;
   onHelp: () => void;
 }
@@ -82,6 +84,9 @@ export function renderLockScreen(container: Element, options: LockScreenOptions)
 
     if (options.error) {
       body.append(el("p", { style: "margin:0;font-size:12.5px;color:var(--high-fg);text-align:center;" }, [options.error]));
+    }
+    if (options.info) {
+      body.append(el("p", { style: "margin:0;font-size:12.5px;color:var(--text-dim);text-align:center;" }, [options.info]));
     }
 
     body.append(

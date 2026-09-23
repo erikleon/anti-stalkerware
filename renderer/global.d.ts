@@ -50,6 +50,7 @@ declare global {
 
   interface Settings {
     toastOnTriageAction: boolean;
+    autoLockMinutes: number;
   }
 
   interface SourceStatus {
@@ -125,6 +126,7 @@ declare global {
       unlock(passphrase: string): Promise<UnlockResult>;
       lock(): Promise<void>;
       isUnlocked(): Promise<boolean>;
+      onLocked(callback: () => void): () => void;
     };
     triage: {
       listRows(bucket: Bucket): Promise<TriageRow[]>;
@@ -146,6 +148,7 @@ declare global {
     settings: {
       get(): Promise<Settings>;
       setToastOnTriageAction(value: boolean): Promise<void>;
+      setAutoLockMinutes(value: number): Promise<void>;
       listSources(): Promise<SourceStatus[]>;
     };
     userContext: {

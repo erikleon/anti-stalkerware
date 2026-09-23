@@ -5,11 +5,28 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:
  * login: the threat model is an adversary who already knows the device
  * password, so unlocking the vault has to require a separate secret.
  *
- * This is a working baseline, not the fully hardened version: key
- * derivation and authenticated encryption are real and sound (scrypt +
- * AES-256-GCM, both built into Node, no native dependency), but in-memory
- * key handling, inactivity auto-lock, and clipboard/temp-file hygiene are
- * still open — see TODOS.md, "Harden vault key management".
+ * Key derivation and authenticated encryption are real and sound (scrypt
+ * at the OWASP-recommended cost parameters + AES-256-GCM, both built into
+ * Node, no native dependency). Inactivity auto-lock is real too (see
+ * VaultSession.touch/isIdle in main/vault-session.ts and the timer in
+ * main/index.ts) — a live unlocked session times out on its own.
+ *
+ * Two things from TODOS.md's original "harden vault key management" item
+ * are deliberately NOT done, not overlooked:
+ * - argon2id over scrypt: would need a native or WASM dependency Node
+ *   doesn't ship, for a marginal hardening gain over scrypt already run
+ *   at a real memory-hard cost — not worth reintroducing the native-build
+ *   fragility this project already got burned by once (see git history).
+ * - Locking key material out of swap / scrubbing it from memory on lock:
+ *   Node/V8 exposes no real mlock or secure-erase primitive without a
+ *   native addon. Accepted as a platform limitation, not solved — the
+ *   inactivity timeout above is the real mitigation for this threat
+ *   (a live unlocked session under a laptop-password-holding adversary),
+ *   shortening the window rather than closing it.
+ *
+ * Clipboard clearing was also in that TODO item, but there's nothing to
+ * clear yet — no feature in this app currently copies vault content to
+ * the clipboard.
  *
  * This encrypts sensitive field values (message text, raw payloads,
  * credential secrets), not the whole SQLite file. Row counts, timestamps,
