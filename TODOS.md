@@ -3,17 +3,15 @@
 Deferred items from the v1 plan review (2026-09-22). Not blocking v1
 implementation; pick up after the core ingest/vault/score/triage lanes land.
 
-## 1. Read Jigsaw Harassment Manager — retroactive check against the design
+## 1. ~~Read Jigsaw Harassment Manager — retroactive check against the design~~ DONE 2026-09-23
 
-Updated 2026-09-23: the triage design review happened before this got done.
-Read Jigsaw's open-source Harassment Manager (Apache-2) now and diff it
-against `DESIGN.md` / the published triage mockup (bucketing, batch-hide,
-blur) — catches anything their user research (interviews with 27 journalists
-and activists) found that this review's general trauma-informed research
-didn't, while the design is still a mockup and cheap to change. Reference
-only, not a code dependency.
-
-Depends on: nothing. Do before triage UI implementation starts.
+Read the real component structure at `conversationai/harassment-manager`
+(not just its README) and diffed it against `DESIGN.md`. Findings written
+into `DESIGN.md`'s "Diff against Jigsaw's Harassment Manager" section. The
+one real gap it surfaced — a dedicated crisis-resources / find-support
+section, which their interviews with 27 journalists and activists apparently
+found important enough to build as a first-class part of the app — is
+TODO item 5 below.
 
 ## 2. Harden vault key management
 
@@ -50,3 +48,17 @@ accessibility already works (see `DESIGN.md`), this is a speed enhancement
 for power users, not a gap.
 
 Depends on: the triage UI existing.
+
+## 5. Crisis-resources / find-support section
+
+Surfaced by the Jigsaw diff (TODO 1): their tool has a dedicated section
+linking to crisis resources and support organizations, built directly into
+the harassment-management flow rather than bolted on. This design has
+nothing equivalent anywhere yet — no resource links, no way to reach
+support from inside the app. Needs its own design pass: what resources
+(national hotlines? region-specific? user-configurable?), where it lives
+in the nav, and how it's framed so it reads as available help, not as a
+crisis-mode interruption.
+
+Depends on: nothing. Genuinely deferrable, but real — came from actual
+user research with the population this app serves, not a guess.

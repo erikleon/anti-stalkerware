@@ -16,6 +16,12 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
+    // Floor for the 3-pane triage layout (nav strip + bucket rail + message
+    // list + detail pane) — below this the panes don't fit. The OS refuses
+    // to shrink the window past it rather than the app needing responsive
+    // collapse logic for what's fundamentally a desktop layout.
+    minWidth: 900,
+    minHeight: 600,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

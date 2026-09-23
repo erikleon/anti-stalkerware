@@ -35,15 +35,26 @@ the app must not force a theme.
 --accent-contrast #17191d               #ffffff
 --focus-ring      #9aa4b1               #4a525e
 --high-bg/-fg     #3a2422 / #e2897d     #fbe3e6 / #a5324a
---med-bg/-fg      #37301f / #d8b568     #fbecd0 / #92650b
---reviewed-fg     #7fa08a               #5f7a5a
+--med-bg/-fg      #37301f / #d8b568     #fbecd0 / #8f630b
+--reviewed-fg     #7fa08a               #5c7657
 ```
 
 Off-white on near-black (not pure white on pure black) and off-black on
 off-white in both directions — reduces eye strain versus maximum-contrast
-extremes while comfortably clearing WCAG 4.5:1 for normal text. Verify
-exact ratios with a real contrast checker before shipping; these are
-principled choices, not measured ones.
+extremes. **Verified** (not just principled) against the real WCAG relative-
+luminance formula for every text/background pair used in the app, both
+themes — 21 pairs checked, all pass their required ratio (4.5:1 normal
+text, 3:1 for the UI-component focus ring). Two light-mode values failed
+on first pass and were corrected here:
+
+- `--med-fg` (light): `#92650b` → `#8f630b` (was 4.41:1 on `--med-bg`, now 4.55:1)
+- `--reviewed-fg` (light): `#5f7a5a` → `#5c7657` (was 4.34:1 on `--bg`, now 4.59:1)
+
+Both are light-mode only in the current mockup (light theme was specified but
+never rendered on the comparison board), so this correction lives here in
+the spec, not in a mockup file. Verification script: `scripts/check-contrast.mjs`
+— run it after changing any color token; a value that looks fine isn't the
+same as one that passes.
 
 ## Typography
 
@@ -184,8 +195,38 @@ Built against the actual code in `vault/destroy.ts`: the exact
 destroy button stays disabled and visually inert until the typed text
 matches exactly, matching `confirmationMatches()`'s behavior.
 
+## Diff against Jigsaw's Harassment Manager
+
+Retroactive check per TODOS.md item 1 — read the real component structure
+at `conversationai/harassment-manager` (not just its README) and diffed it
+against this design. Two findings:
+
+**Real gap, worth adding:** Jigsaw has a dedicated `find-support` section
+(crisis resources / support organizations) built directly into the
+harassment-management flow — not an afterthought, a first-class part of
+the app. This design has nothing equivalent anywhere. That came out of
+their actual interviews with 27 journalists and activists, not something
+general trauma-informed design research surfaced as a concrete UI element.
+Logged in TODOS.md as a new item.
+
+**Structural difference, not necessarily a fix:** Jigsaw's model is
+"filter comments → build a discrete Report → export/share it"
+(`create-report`, `review-report`, `report-pdf` as real, separate steps).
+This design uses a continuous "Needs review / Reviewed / All" bucket
+instead of a discrete report-building step. Different IA philosophy, not
+a clear improvement either way — noting it rather than redoing the
+already-built and already-locked IA on the strength of one comparison.
+
+**Smaller, lower-priority notes:** Jigsaw filters by a toxicity *range*
+(slider) rather than fixed High/Medium badges, and has a structured
+date-range picker where this design's Vault/Export screen has a plain
+search box. Neither is wrong; both are reasonable future refinements, not
+logged as TODOS given how minor they are relative to the find-support gap.
+
 ## Not yet designed
 
 - Keyboard power-navigation (arrow keys / j-k through the message list) —
   logged in TODOS.md, not blocking. Basic tab/click accessibility works
   without it.
+- A crisis-resources / find-support section — logged in TODOS.md, see
+  above.
