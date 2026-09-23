@@ -30,6 +30,7 @@ const api: AntistalkerApi = {
     listAll: () => ipcRenderer.invoke("vaultExport:listAll"),
     disclosureText: () => ipcRenderer.invoke("vaultExport:disclosureText"),
     exportToFile: () => ipcRenderer.invoke("vaultExport:exportToFile"),
+    history: () => ipcRenderer.invoke("vaultExport:history"),
   },
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),

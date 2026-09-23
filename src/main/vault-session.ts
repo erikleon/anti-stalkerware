@@ -44,7 +44,14 @@ export class VaultSession {
     try {
       this.vault = await openVault(this.vaultDir, passphrase);
       return true;
-    } catch {
+    } catch (err) {
+      // Never sent to the renderer (that's the whole point — see the doc
+      // comment above), but a main-process-only log line is not the same
+      // exposure: nothing an attacker watching the UI could see reaches
+      // them this way, and without it a real bug (a broken native
+      // dependency, a permissions error) looks identical to a wrong
+      // passphrase and is unfindable.
+      console.error("vault unlock failed:", err);
       return false;
     }
   }

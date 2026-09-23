@@ -1,0 +1,106 @@
+/*
+ * Design tokens — see DESIGN.md, "Color tokens" / "Typography" / "Spacing &
+ * radius" / "Motion". Dark is the default (the "quiet utility" concept);
+ * light is a real, fully-specified override, not an afterthought, since
+ * the app must never force a theme against the OS setting.
+ *
+ * Every text/background pair here is verified against the WCAG contrast
+ * formula by scripts/check-contrast.mjs — run that after changing any
+ * value below, a color that looks fine isn't the same as one that passes.
+ */
+:root {
+  --bg: #17191d;
+  --surface: #1e2126;
+  --surface-hover: #262a30;
+  --border: #2d3138;
+  --text: #d7dbe0;
+  --text-dim: #868e99;
+  --accent: #7b8794;
+  --accent-contrast: #17191d;
+  --focus-ring: #9aa4b1;
+  --high-bg: #3a2422;
+  --high-fg: #e2897d;
+  --med-bg: #37301f;
+  --med-fg: #d8b568;
+  --reviewed-fg: #7fa08a;
+
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 2px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f5f2;
+    --surface: #ffffff;
+    --surface-hover: #ececea;
+    --border: #dcdcd8;
+    --text: #1c1e21;
+    --text-dim: #6b7178;
+    --accent: #4a525e;
+    --accent-contrast: #ffffff;
+    --focus-ring: #4a525e;
+    --high-bg: #fbe3e6;
+    --high-fg: #a5324a;
+    --med-bg: #fbecd0;
+    --med-fg: #8f630b;
+    --reviewed-fg: #5c7657;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+button,
+input {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Functional motion only (D8) — every transition here ties to a
+   user-triggered state change, never ambient. Disabled outright under
+   reduced-motion rather than just shortened. */
+.row-transition {
+  transition: background-color 120ms ease;
+}
+
+.slide-fade {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.blur-reveal {
+  transition: filter 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-transition,
+  .slide-fade,
+  .blur-reveal {
+    transition: none !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+a {
+  color: inherit;
+}

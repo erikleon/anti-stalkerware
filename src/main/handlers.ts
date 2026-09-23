@@ -11,6 +11,7 @@ import { DESTROY_CONFIRMATION_PHRASE, DESTROY_DISCLOSURE_TEXT, confirmationMatch
 import type { Message } from "../types/message";
 import type {
   DestroyResult,
+  ExportHistoryEntry,
   ExportResult,
   OsintSenderEligibility,
   RankedLead,
@@ -90,6 +91,12 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
   bind<[], Message[]>("vaultExport:listAll", async () => listAllMessages(requireVault(session).store));
   bind<[], string>("vaultExport:disclosureText", async () => EXPORT_DISCLOSURE_TEXT);
   bind<[], ExportResult | undefined>("vaultExport:exportToFile", async () => exportToFile(session, mainWindow));
+  bind<[], ExportHistoryEntry[]>("vaultExport:history", async () => {
+    const events = await requireVault(session).integrityLog.list();
+    return events
+      .filter((e) => e.kind === "export")
+      .map((e) => ({ occurredAt: e.occurredAt, recordCount: e.recordHashes.length }));
+  });
 
   bind<[], Settings>("settings:get", async () => settings.get());
   bind<[boolean], void>("settings:setToastOnTriageAction", async (value) => settings.setToastOnTriageAction(value));

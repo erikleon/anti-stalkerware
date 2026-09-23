@@ -49,6 +49,11 @@ export interface ExportResult {
   messageCount: number;
 }
 
+export interface ExportHistoryEntry {
+  occurredAt: Date;
+  recordCount: number;
+}
+
 export interface AntistalkerApi {
   vault: {
     exists(): Promise<boolean>;
@@ -72,6 +77,7 @@ export interface AntistalkerApi {
     listAll(): Promise<Message[]>;
     disclosureText(): Promise<string>;
     exportToFile(): Promise<ExportResult | undefined>;
+    history(): Promise<ExportHistoryEntry[]>;
   };
   settings: {
     get(): Promise<Settings>;
