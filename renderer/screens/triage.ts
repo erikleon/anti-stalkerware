@@ -21,6 +21,45 @@ export async function renderTriageScreen(container: Element): Promise<void> {
   let selectedMessages: WireMessage[] = [];
   const settings = await window.antistalker.settings.get();
 
+  // Keyboard power-navigation (TODOS item 4): arrow/j-k moves a roving
+  // tabindex through the row buttons, Enter opens the focused row for free
+  // (native <button> behavior — no separate handler needed), r/h act on
+  // it. focusedIndex survives a redraw so an action like hide doesn't
+  // strand the keyboard user's position.
+  let focusedIndex = -1;
+  let rowButtons: HTMLButtonElement[] = [];
+
+  function focusRow(index: number): void {
+    if (rowButtons.length === 0) return;
+    focusedIndex = Math.max(0, Math.min(index, rowButtons.length - 1));
+    rowButtons[focusedIndex]?.focus();
+  }
+
+  function handleRowKeydown(e: KeyboardEvent, index: number): void {
+    switch (e.key) {
+      case "ArrowDown":
+      case "j":
+        e.preventDefault();
+        focusRow(index + 1);
+        break;
+      case "ArrowUp":
+      case "k":
+        e.preventDefault();
+        focusRow(index - 1);
+        break;
+      case "r": {
+        const row = rows[index];
+        if (row && !row.reviewed) void act(row, "review");
+        break;
+      }
+      case "h": {
+        const row = rows[index];
+        if (row && !row.hidden) void act(row, "hide");
+        break;
+      }
+    }
+  }
+
   async function refresh(): Promise<void> {
     [rows, counts] = await Promise.all([window.antistalker.triage.listRows(bucket), window.antistalker.triage.counts()]);
     if (selectedThreadId && !rows.some((r) => r.threadId === selectedThreadId)) {
@@ -81,7 +120,8 @@ export async function renderTriageScreen(container: Element): Promise<void> {
         ]),
       );
     }
-    for (const row of rows) {
+    rowButtons = [];
+    rows.forEach((row, index) => {
       const isCurrent = row.threadId === selectedThreadId;
       const rowEl = el(
         "div",
@@ -98,12 +138,22 @@ export async function renderTriageScreen(container: Element): Promise<void> {
       if (row.reviewed) badgeRow.append(el("span", { class: "badge badge--reviewed" }, ["Reviewed"]));
       const preview = el("div", { class: "message-row-preview" }, [row.latestText]);
 
-      const openButton = el("button", { type: "button", style: "all:unset;cursor:pointer;display:contents;" }, [
-        top,
-        badgeRow,
-        preview,
-      ]);
-      openButton.addEventListener("click", () => void selectThread(row.threadId));
+      const openButton = el(
+        "button",
+        {
+          type: "button",
+          class: "message-row-open",
+          tabindex: index === Math.max(focusedIndex, 0) ? "0" : "-1",
+          "aria-label": `${row.sender}, ${formatRelativeTime(row.latestSentAt)}${row.reviewed ? ", reviewed" : ""}`,
+        },
+        [top, badgeRow, preview],
+      ) as HTMLButtonElement;
+      openButton.addEventListener("click", () => {
+        focusedIndex = index;
+        void selectThread(row.threadId);
+      });
+      openButton.addEventListener("keydown", (e) => handleRowKeydown(e, index));
+      rowButtons.push(openButton);
       rowEl.append(openButton);
 
       if (bucket !== "reviewed" || !row.reviewed) {
@@ -128,7 +178,7 @@ export async function renderTriageScreen(container: Element): Promise<void> {
       }
 
       list.append(rowEl);
-    }
+    });
     screen.append(list);
 
     // Detail pane
@@ -149,6 +199,10 @@ export async function renderTriageScreen(container: Element): Promise<void> {
     screen.append(detail);
 
     mount(container, screen);
+
+    // Only restore focus into the list if a keyboard/click interaction
+    // already put it there — never steal focus on first render.
+    if (focusedIndex >= 0) focusRow(focusedIndex);
   }
 
   draw();

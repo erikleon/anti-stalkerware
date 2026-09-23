@@ -39,16 +39,29 @@ pass, not a bolt-on.
 Depends on: `vault/crypto.ts` (lane 2) and TODO 2 above, since a duress
 mechanism is part of the same key-management design.
 
-## 4. Keyboard power-navigation for the triage message list
+## 4. ~~Keyboard power-navigation for the triage message list~~ DONE 2026-09-23
 
-Arrow keys (or j/k) to move focus through the message list, space to
-toggle selection, enter to open detail — for triaging a large backlog
-quickly without reaching for the mouse. Not blocking: real tab/click
-accessibility already works (see `DESIGN.md`), this is a speed enhancement
-for power users, not a gap.
+Built as a standard roving-tabindex list: ArrowDown/j and ArrowUp/k move
+focus between row buttons, Enter opens the focused row (free — native
+`<button>` behavior, no handler needed), r marks it reviewed, h hides it.
+Focus survives a redraw — marking a row reviewed or hiding it removes it
+from the list, and focus lands on the next available row rather than
+getting stranded. No "space to select" — there's no multi-select/batch
+action in the real triage screen (that was an aspirational detail from
+the original TODO wording, not something DESIGN.md's built screens
+actually have), so r/h act directly on the focused row instead.
 
-The triage UI now exists (`renderer/screens/triage.ts`), so this is
-unblocked — still not urgent, still a speed enhancement, not a gap.
+Along the way, found and fixed a real bug: the row's open-control used
+`display: contents` to avoid an extra layout box, which made it silently
+unfocusable in this Chromium build — `.focus()` calls succeeded on the
+element reference but `document.activeElement` never actually changed,
+so keyboard nav would have done nothing at all. Fixed by giving it a
+real (but still fully unstyled/transparent) flex box instead.
+
+Verified end to end (`test/e2e/triage-keyboard-nav.spec.ts`): arrow/j/k
+movement, Enter opening a thread, r and h against real seeded messages,
+and bucket counts updating in response — closing the gap TODOS item 8
+called out below.
 
 ## 5. ~~Crisis-resources / find-support section~~ DONE 2026-09-23
 
@@ -98,7 +111,7 @@ Depends on: TODO 6's onboarding flow existing would make this more
 useful but isn't a hard dependency — boundaries/tagged phrases don't
 need a live source, only past vault data.
 
-## 8. Deeper e2e coverage with seeded vault data
+## 8. ~~Deeper e2e coverage with seeded vault data~~ DONE 2026-09-23
 
 `test/e2e/lock-and-triage.spec.ts` covers first-run/unlock/lock-screen
 flows against an empty vault. `test/e2e/onboarding.spec.ts` (added
@@ -109,12 +122,11 @@ mismatch this item originally worried about (the Playwright runner is
 plain Node; the launched app is Electron's Node) never comes up,
 because the test never touches better-sqlite3 itself.
 
-Still not covered: mark reviewed / hide against a real message, and
-bucket counts updating in response — the onboarding-seeded message
-gets the triage screen a non-empty state, but no test yet interacts
-with it there. Extending onboarding.spec.ts to do that is the natural
-next step; ELECTRON_RUN_AS_NODE seeding is no longer necessary for
-this class of coverage.
+`test/e2e/triage-keyboard-nav.spec.ts` (added 2026-09-23, alongside
+item 4) closes the remaining gap: mark reviewed / hide against real
+seeded messages, and bucket counts updating in response, are now
+covered. ELECTRON_RUN_AS_NODE seeding turned out to be unnecessary
+for this class of coverage entirely.
 
 ## 9. ~~Renderer isn't covered by the shared lint/typecheck-in-eslint setup~~ DONE 2026-09-23
 

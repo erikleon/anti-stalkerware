@@ -121,6 +121,26 @@
   background: var(--surface-hover);
 }
 
+/* The row's own open-control. Not display:contents — buttons with that
+   value aren't reliably focusable, which silently breaks keyboard
+   navigation (arrow keys have nothing to move focus to). A real flex box
+   nested inside .message-row renders identically since it just becomes
+   one more flex container in the same column flow. */
+.message-row-open {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 .message-row-top {
   display: flex;
   align-items: center;
