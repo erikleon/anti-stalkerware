@@ -8,6 +8,7 @@ import { SqliteCredentialStore } from "./credentials";
 import { SqliteIntegrityLog } from "./integrity";
 import { TriageStateStore } from "./triage-state";
 import { SourceConfigStore } from "./source-config";
+import { UserContextStore } from "./user-context";
 
 const METADATA_FILENAME = "vault.meta.json";
 const DB_FILENAME = "vault.db";
@@ -40,6 +41,7 @@ export interface Vault {
   integrityLog: SqliteIntegrityLog;
   triageState: TriageStateStore;
   sourceConfig: SourceConfigStore;
+  userContext: UserContextStore;
   key: VaultKey;
   close(): void;
 }
@@ -77,6 +79,7 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
   const integrityLog = new SqliteIntegrityLog(db);
   const triageState = new TriageStateStore(db);
   const sourceConfig = new SourceConfigStore(db);
+  const userContext = new UserContextStore(db);
 
   return {
     store,
@@ -84,6 +87,7 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
     integrityLog,
     triageState,
     sourceConfig,
+    userContext,
     key,
     close() {
       // store, credentials and integrityLog all share this one connection —
