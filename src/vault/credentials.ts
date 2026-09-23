@@ -19,6 +19,7 @@ export interface StoredCredential {
 export interface CredentialStore {
   save(credential: StoredCredential): Promise<void>;
   get(account: string): Promise<StoredCredential | undefined>;
+  remove(account: string): Promise<void>;
 }
 
 interface CredentialRow {
@@ -63,5 +64,9 @@ export class SqliteCredentialStore implements CredentialStore {
       secret: this.key.decrypt(row.secret).toString("utf8"),
       kind: row.kind as StoredCredential["kind"],
     };
+  }
+
+  async remove(account: string): Promise<void> {
+    this.db.prepare(`DELETE FROM credentials WHERE account = ?`).run(account);
   }
 }

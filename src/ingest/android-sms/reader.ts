@@ -19,24 +19,13 @@ interface RawSmsElement {
   body?: string;
 }
 
-/**
- * Phone numbers arrive in wildly different formats across carriers and
- * export tools; compare on digits only, dropping a leading US/Canada
- * country code (1) when present so "+1 555-123-4567" and "555.123.4567"
- * match. This is a deliberately narrow simplification, not general E.164
- * parsing — a full phone-number library is more than this needs.
- */
-export function normalizePhoneNumber(raw: string): string {
-  const digits = raw.replace(/[^0-9]/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return digits.slice(1);
-  }
-  return digits;
+interface ParsedSmsExport {
+  smsElements: RawSmsElement[];
+  mmsElements: unknown[];
 }
 
-export function* parseAndroidSmsExport(xml: Buffer, selectedAddresses: string[]): Generator<IngestResult> {
-  const normalizedSelected = new Set(selectedAddresses.map(normalizePhoneNumber));
-
+/** The XML-parsing step shared by parseAndroidSmsExport (full ingest, address-filtered) and sweepAndroidSmsExport (unfiltered, metadata-only). */
+function parseSmsXml(xml: Buffer): ParsedSmsExport {
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "",
@@ -55,8 +44,27 @@ export function* parseAndroidSmsExport(xml: Buffer, selectedAddresses: string[])
   }
 
   const root = (parsed as { smses?: { sms?: RawSmsElement[]; mms?: unknown[] } })?.smses;
-  const smsElements = root?.sms ?? [];
-  const mmsElements = root?.mms ?? [];
+  return { smsElements: root?.sms ?? [], mmsElements: root?.mms ?? [] };
+}
+
+/**
+ * Phone numbers arrive in wildly different formats across carriers and
+ * export tools; compare on digits only, dropping a leading US/Canada
+ * country code (1) when present so "+1 555-123-4567" and "555.123.4567"
+ * match. This is a deliberately narrow simplification, not general E.164
+ * parsing — a full phone-number library is more than this needs.
+ */
+export function normalizePhoneNumber(raw: string): string {
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return digits.slice(1);
+  }
+  return digits;
+}
+
+export function* parseAndroidSmsExport(xml: Buffer, selectedAddresses: string[]): Generator<IngestResult> {
+  const normalizedSelected = new Set(selectedAddresses.map(normalizePhoneNumber));
+  const { smsElements, mmsElements } = parseSmsXml(xml);
 
   for (const [index, raw] of smsElements.entries()) {
     const address = raw.address ? normalizePhoneNumber(raw.address) : undefined;
@@ -109,6 +117,9 @@ function normalizeSms(raw: RawSmsElement, index: number): IngestResult {
 
   return { kind: "message", raw: rawRecord, message };
 }
+
+export { parseSmsXml };
+export type { RawSmsElement };
 
 function buildRawRecord(raw: unknown, id: string): RawRecord {
   const payload = Buffer.from(JSON.stringify(raw), "utf8");

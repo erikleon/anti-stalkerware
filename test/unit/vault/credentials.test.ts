@@ -49,6 +49,12 @@ describe("SqliteCredentialStore", () => {
     expect(count.c).toBe(1);
   });
 
+  it("remove deletes a stored credential (disconnecting a source)", async () => {
+    await store.save({ account: "victim@gmail.com", secret: "app-specific-password-123", kind: "app-password" });
+    await store.remove("victim@gmail.com");
+    expect(await store.get("victim@gmail.com")).toBeUndefined();
+  });
+
   it("never stores the credential secret as plaintext on disk", async () => {
     await store.save({ account: "victim@gmail.com", secret: "SECRET_CREDENTIAL_MARKER", kind: "app-password" });
     db.close();
