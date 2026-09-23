@@ -8,15 +8,19 @@ import { buildExportPayload, listAllMessages, EXPORT_DISCLOSURE_TEXT } from "../
 import { listEligibility } from "../osint/eligibility";
 import { rankCandidates } from "../osint/rank";
 import { DESTROY_CONFIRMATION_PHRASE, DESTROY_DISCLOSURE_TEXT, confirmationMatches, destroyVault } from "../vault/destroy";
-import type { Message } from "../types/message";
+import type { Message, SourceKind } from "../types/message";
+import type { MetadataSweepResult } from "../ingest/adapter";
+import * as onboarding from "./onboarding";
 import type {
   DestroyResult,
   ExportHistoryEntry,
   ExportResult,
+  ImapConnectionInput,
   OsintSenderEligibility,
   RankedLead,
   Settings,
   SourceStatus,
+  SyncResult,
   UnlockResult,
 } from "./api";
 
@@ -100,12 +104,33 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
 
   bind<[], Settings>("settings:get", async () => settings.get());
   bind<[boolean], void>("settings:setToastOnTriageAction", async (value) => settings.setToastOnTriageAction(value));
-  bind<[], SourceStatus[]>("settings:listSources", async () =>
-    // No onboarding flow exists yet to point an adapter at a real chat.db,
-    // Android export, or IMAP account — so every source is honestly
-    // "not connected" rather than a fabricated status.
-    SOURCE_LABELS.map(({ source, label }) => ({ source, label, connected: false })),
+  bind<[], SourceStatus[]>("settings:listSources", async () => {
+    const vault = requireVault(session);
+    return SOURCE_LABELS.map(({ source, label }) => ({
+      source,
+      label,
+      connected: vault.sourceConfig.get(source) !== undefined,
+    }));
+  });
+
+  bind<[], string | undefined>("onboarding:pickFile", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, { properties: ["openFile"] });
+    return canceled ? undefined : filePaths[0];
+  });
+  bind<[string], MetadataSweepResult[]>("onboarding:sweepImessage", async (dbPath) => onboarding.sweepImessage(dbPath));
+  bind<[string], MetadataSweepResult[]>("onboarding:sweepAndroidSms", async (exportFilePath) => onboarding.sweepAndroidSms(exportFilePath));
+  bind<[ImapConnectionInput], MetadataSweepResult[]>("onboarding:sweepImap", async (connection) => onboarding.sweepImap(connection));
+  bind<[string, string[]], SyncResult>("onboarding:connectImessage", async (dbPath, selected) =>
+    onboarding.connectImessage(requireVault(session), dbPath, selected),
   );
+  bind<[string, string[]], SyncResult>("onboarding:connectAndroidSms", async (exportFilePath, selected) =>
+    onboarding.connectAndroidSms(requireVault(session), exportFilePath, selected),
+  );
+  bind<[ImapConnectionInput, string[]], SyncResult>("onboarding:connectImap", async (connection, selected) =>
+    onboarding.connectImapSource(requireVault(session), connection, selected),
+  );
+  bind<[SourceKind], SyncResult>("onboarding:syncNow", async (source) => onboarding.syncNow(requireVault(session), source));
+  bind<[SourceKind], void>("onboarding:disconnect", async (source) => onboarding.disconnect(requireVault(session), source));
 
   bind<[], string>("destroy:disclosureText", async () => DESTROY_DISCLOSURE_TEXT);
   bind<[], string>("destroy:confirmationPhrase", async () => DESTROY_CONFIRMATION_PHRASE);

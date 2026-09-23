@@ -9,7 +9,8 @@
  * actually runs in the browser context) can't drift out of sync.
  */
 import type { Bucket, TriageRow } from "../triage/view";
-import type { Message } from "../types/message";
+import type { Message, SourceKind } from "../types/message";
+import type { MetadataSweepResult } from "../ingest/adapter";
 
 export type { Bucket, TriageRow };
 
@@ -54,6 +55,21 @@ export interface ExportHistoryEntry {
   recordCount: number;
 }
 
+/** Non-secret IMAP connection fields the onboarding form collects, plus the app password itself — the only field handlers.ts strips out before persisting to SourceConfigStore (it goes to CredentialStore instead). */
+export interface ImapConnectionInput {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  appPassword: string;
+  mailbox: string;
+}
+
+export interface SyncResult {
+  appended: number;
+  quarantined: number;
+}
+
 export interface AntistalkerApi {
   vault: {
     exists(): Promise<boolean>;
@@ -83,6 +99,20 @@ export interface AntistalkerApi {
     get(): Promise<Settings>;
     setToastOnTriageAction(value: boolean): Promise<void>;
     listSources(): Promise<SourceStatus[]>;
+  };
+  onboarding: {
+    /** Opens a native file picker; undefined if the user canceled. */
+    pickFile(): Promise<string | undefined>;
+    sweepImessage(dbPath: string): Promise<MetadataSweepResult[]>;
+    sweepAndroidSms(exportFilePath: string): Promise<MetadataSweepResult[]>;
+    sweepImap(connection: ImapConnectionInput): Promise<MetadataSweepResult[]>;
+    /** Saves the config, stores the credential (imap only), and runs the first ingest — one round trip instead of connect-then-sync. */
+    connectImessage(dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
+    connectAndroidSms(exportFilePath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
+    connectImap(connection: ImapConnectionInput, selectedIdentifiers: string[]): Promise<SyncResult>;
+    /** Re-runs ingest for an already-connected source using its saved config. */
+    syncNow(source: SourceKind): Promise<SyncResult>;
+    disconnect(source: SourceKind): Promise<void>;
   };
   destroy: {
     disclosureText(): Promise<string>;

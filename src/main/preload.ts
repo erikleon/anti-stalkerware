@@ -42,6 +42,18 @@ const api: AntistalkerApi = {
     confirmationPhrase: () => ipcRenderer.invoke("destroy:confirmationPhrase"),
     confirm: (typedPhrase) => ipcRenderer.invoke("destroy:confirm", typedPhrase),
   },
+  onboarding: {
+    pickFile: () => ipcRenderer.invoke("onboarding:pickFile"),
+    sweepImessage: (dbPath) => ipcRenderer.invoke("onboarding:sweepImessage", dbPath),
+    sweepAndroidSms: (exportFilePath) => ipcRenderer.invoke("onboarding:sweepAndroidSms", exportFilePath),
+    sweepImap: (connection) => ipcRenderer.invoke("onboarding:sweepImap", connection),
+    connectImessage: (dbPath, selectedIdentifiers) => ipcRenderer.invoke("onboarding:connectImessage", dbPath, selectedIdentifiers),
+    connectAndroidSms: (exportFilePath, selectedIdentifiers) =>
+      ipcRenderer.invoke("onboarding:connectAndroidSms", exportFilePath, selectedIdentifiers),
+    connectImap: (connection, selectedIdentifiers) => ipcRenderer.invoke("onboarding:connectImap", connection, selectedIdentifiers),
+    syncNow: (source) => ipcRenderer.invoke("onboarding:syncNow", source),
+    disconnect: (source) => ipcRenderer.invoke("onboarding:disconnect", source),
+  },
 };
 
 contextBridge.exposeInMainWorld("antistalker", api);
