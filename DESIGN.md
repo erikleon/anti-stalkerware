@@ -195,19 +195,48 @@ Built against the actual code in `vault/destroy.ts`: the exact
 destroy button stays disabled and visually inert until the typed text
 matches exactly, matching `confirmationMatches()`'s behavior.
 
+## Support and resources
+
+A fifth app-level nav icon (question-mark-in-circle, not a heart or an
+alarm shape — calm, standard "help" symbol, not an emotional one), sitting
+in the main nav group rather than exiled to Settings. Lists three
+verified national US services, each checked against its own official page,
+not assumed from memory:
+
+- National Domestic Violence Hotline — 1-800-799-7233, text START to
+  88788, thehotline.org
+- Crisis Text Line — text HOME to 741741 (not DV-specific; covers any crisis)
+- RAINN National Sexual Assault Hotline — 1-800-656-4673, text HOPE to
+  64673, rainn.org/hotline
+
+States plainly these are US national services and that international
+users need a local equivalent — no claim of coverage that wasn't verified.
+
+**Reachable from the lock screen, before the passphrase** — a deliberate
+decision, not an oversight: crisis help and vault security are two
+different needs, and gating one behind the other is a mistake regardless
+of how careful the rest of the security model is. Labeled just "Help" on
+the lock screen (not "Get help" or anything crisis-specific) so it reads
+as an ordinary app-support link and doesn't undermine the disguise (D5) —
+the honest framing lives on the resources screen itself, once inside.
+
+These three numbers are stable, long-standing national services —
+reasonable to hardcode. Whether to make the list configurable (for
+international users, or regional resources) is a real product question
+for later, not decided here.
 ## Diff against Jigsaw's Harassment Manager
 
 Retroactive check per TODOS.md item 1 — read the real component structure
 at `conversationai/harassment-manager` (not just its README) and diffed it
 against this design. Two findings:
 
-**Real gap, worth adding:** Jigsaw has a dedicated `find-support` section
-(crisis resources / support organizations) built directly into the
-harassment-management flow — not an afterthought, a first-class part of
-the app. This design has nothing equivalent anywhere. That came out of
-their actual interviews with 27 journalists and activists, not something
-general trauma-informed design research surfaced as a concrete UI element.
-Logged in TODOS.md as a new item.
+**Real gap, worth adding — DONE 2026-09-23:** Jigsaw has a dedicated
+`find-support` section (crisis resources / support organizations) built
+directly into the harassment-management flow — not an afterthought, a
+first-class part of the app. That came out of their actual interviews with
+27 journalists and activists, not something general trauma-informed design
+research surfaced as a concrete UI element. Built and added to the
+comparison board — see "Support and resources" below.
 
 **Structural difference, not necessarily a fix:** Jigsaw's model is
 "filter comments → build a discrete Report → export/share it"
@@ -228,5 +257,3 @@ logged as TODOS given how minor they are relative to the find-support gap.
 - Keyboard power-navigation (arrow keys / j-k through the message list) —
   logged in TODOS.md, not blocking. Basic tab/click accessibility works
   without it.
-- A crisis-resources / find-support section — logged in TODOS.md, see
-  above.

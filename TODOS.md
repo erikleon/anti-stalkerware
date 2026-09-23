@@ -49,16 +49,15 @@ for power users, not a gap.
 
 Depends on: the triage UI existing.
 
-## 5. Crisis-resources / find-support section
+## 5. ~~Crisis-resources / find-support section~~ DONE 2026-09-23
 
-Surfaced by the Jigsaw diff (TODO 1): their tool has a dedicated section
-linking to crisis resources and support organizations, built directly into
-the harassment-management flow rather than bolted on. This design has
-nothing equivalent anywhere yet — no resource links, no way to reach
-support from inside the app. Needs its own design pass: what resources
-(national hotlines? region-specific? user-configurable?), where it lives
-in the nav, and how it's framed so it reads as available help, not as a
-crisis-mode interruption.
+Designed and built: a fifth app-level nav icon ("Support and resources"),
+listing three national US services verified against their own official
+pages (National DV Hotline, Crisis Text Line, RAINN), plus a "Help" link
+on the lock screen reachable before the passphrase — crisis help isn't
+gated behind vault security. Full writeup in `DESIGN.md`'s "Support and
+resources" section; screen is on the comparison board.
 
-Depends on: nothing. Genuinely deferrable, but real — came from actual
-user research with the population this app serves, not a guess.
+Left open, for later: whether the resource list should be configurable
+(international users, regional resources) rather than hardcoded — a real
+product question, not answered here.
