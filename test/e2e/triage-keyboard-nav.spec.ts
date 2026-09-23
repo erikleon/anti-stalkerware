@@ -55,14 +55,17 @@ test.describe("triage: keyboard power-navigation", () => {
     await expect(window.locator(".message-row")).toHaveCount(2);
     await expect(window.locator(".bucket-item .count").first()).toHaveText("2");
 
-    const firstOpenButton = window.locator(".message-row-open").first();
+    const rowButtons = window.locator(".message-row-open");
+    const firstOpenButton = rowButtons.nth(0);
+    const secondOpenButton = rowButtons.nth(1);
+
     await firstOpenButton.focus();
-    const firstLabel = await window.evaluate(() => document.activeElement?.getAttribute("aria-label"));
-    expect(firstLabel).toContain("+15552222222"); // most recent message first
+    await expect(firstOpenButton).toBeFocused();
+    await expect(firstOpenButton).toHaveAttribute("aria-label", /\+15552222222/); // most recent message first
 
     await firstOpenButton.press("ArrowDown");
-    const secondLabel = await window.evaluate(() => document.activeElement?.getAttribute("aria-label"));
-    expect(secondLabel).toContain("+15551111111");
+    await expect(secondOpenButton).toBeFocused();
+    await expect(secondOpenButton).toHaveAttribute("aria-label", /\+15551111111/);
 
     // Enter opens the focused row (native <button> behavior).
     await window.keyboard.press("Enter");
