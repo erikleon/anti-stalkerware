@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "lint": "eslint src test --ext .ts",
+    "lint": "eslint src test renderer --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.eslint.json --noEmit && tsc -p renderer/tsconfig.json --noEmit",
     "rebuild:node": "npm rebuild better-sqlite3",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",

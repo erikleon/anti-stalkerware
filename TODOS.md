@@ -116,10 +116,11 @@ with it there. Extending onboarding.spec.ts to do that is the natural
 next step; ELECTRON_RUN_AS_NODE seeding is no longer necessary for
 this class of coverage.
 
-## 9. Renderer isn't covered by the shared lint/typecheck-in-eslint setup
+## 9. ~~Renderer isn't covered by the shared lint/typecheck-in-eslint setup~~ DONE 2026-09-23
 
-`eslint.config.js` type-aware lints against `tsconfig.eslint.json`, which
-only includes `src/**` and `test/**` — `renderer/**` compiles and
-typechecks on its own (`renderer/tsconfig.json`, run separately in
-`npm run typecheck`) but `npm run lint` never touches it. Low priority:
-renderer code is small and typechecked, just not linted.
+`eslint.config.js` now has a second config block scoped to `renderer/**/*.ts`,
+pointed at `renderer/tsconfig.json` (its own project, since it targets the
+browser — DOM lib, ES module output — and can't share `tsconfig.eslint.json`
+with src/test's Node/CommonJS project). `npm run lint` now runs `eslint src
+test renderer`. Lint is clean except one expected warning (`no-console` on
+the deliberate main-process-only log line in `vault-session.ts`).
