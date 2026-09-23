@@ -68,12 +68,12 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
 
   bind<[Bucket], TriageRow[]>("triage:listRows", async (bucket) => {
     const vault = requireVault(session);
-    const rows = await listTriageRows(vault.store, vault.triageState);
+    const rows = await listTriageRows(vault.store, vault.triageState, vault.userContext);
     return rows.filter((row) => matchesBucket(row, bucket));
   });
   bind<[], Record<Bucket, number>>("triage:counts", async () => {
     const vault = requireVault(session);
-    const rows = await listTriageRows(vault.store, vault.triageState);
+    const rows = await listTriageRows(vault.store, vault.triageState, vault.userContext);
     return countByBucket(rows);
   });
   bind<[string], Message[]>("triage:listMessages", async (threadId) => requireVault(session).store.list(threadId));
