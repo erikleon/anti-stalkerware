@@ -63,17 +63,25 @@ Left open, for later: whether the resource list should be configurable
 (international users, regional resources) rather than hardcoded — a real
 product question, not answered here.
 
-## 6. Onboarding: point an ingest adapter at a real source
+## 6. ~~Onboarding: point an ingest adapter at a real source~~ DONE 2026-09-23
 
-`src/ingest/*/adapter.ts` and `src/pipeline/run-ingest.ts` are real and
-tested, but nothing in the app lets a user select a chat.db file, an
-Android SMS export, or enter IMAP credentials. Settings currently shows
-every source as honestly "not connected" (`settings:listSources` in
-`src/main/handlers.ts`) rather than fabricating a status. Needs its own
-design pass — this is the point where a user hands the app access to
-their actual messages, which deserves more care than a file picker.
+Built: Settings has a real Connect action per source, opening a wizard
+(`renderer/screens/onboarding.ts`) — connect, scan (metadata only, no
+vault write), DESIGN.md's D7 "before you continue" screen, a checkbox
+picker, then connect + first sync in one step. Connection config lives
+in the vault (`vault/source-config.ts`), not a plain settings file,
+since it reveals exactly who's being monitored; the IMAP app password
+goes through the existing `CredentialStore`. Verified end to end against
+the real app (`test/e2e/onboarding.spec.ts`): connecting an Android SMS
+export through the actual wizard UI, and the imported message showing
+up in triage afterward.
 
-Depends on: nothing blocking; the pipeline it plugs into already exists.
+Left open: no checkpoint persistence, so "Sync now" always re-scans the
+whole source (correct — append() dedupes by hash — just not efficient
+for a large mailbox or export). iMessage and IMAP onboarding are wired
+identically but only unit-tested (real chat.db / IMAP server access
+isn't available in this environment); Android SMS is the one path
+verified through a real e2e run.
 
 ## 7. Settings UI for boundaries and tagged phrases
 
@@ -93,14 +101,20 @@ need a live source, only past vault data.
 ## 8. Deeper e2e coverage with seeded vault data
 
 `test/e2e/lock-and-triage.spec.ts` covers first-run/unlock/lock-screen
-flows against an empty vault. Testing the actual triage interactions
-(mark reviewed, hide, bucket counts updating) against a real message
-needs seed data written through the same better-sqlite3 native ABI the
-launched Electron process uses — the Playwright test runner itself runs
-under plain Node, so it can't just `import` vault.ts directly without
-hitting the same NODE_MODULE_VERSION mismatch documented in the README.
-The fix is running the seed script under Electron's own Node runtime
-(`ELECTRON_RUN_AS_NODE=1`) rather than the test runner's, not yet built.
+flows against an empty vault. `test/e2e/onboarding.spec.ts` (added
+2026-09-23) sidesteps the seeding problem entirely by seeding through
+the app's own onboarding UI (an Android SMS export file) rather than
+reaching into the vault directly from the test process — the ABI
+mismatch this item originally worried about (the Playwright runner is
+plain Node; the launched app is Electron's Node) never comes up,
+because the test never touches better-sqlite3 itself.
+
+Still not covered: mark reviewed / hide against a real message, and
+bucket counts updating in response — the onboarding-seeded message
+gets the triage screen a non-empty state, but no test yet interacts
+with it there. Extending onboarding.spec.ts to do that is the natural
+next step; ELECTRON_RUN_AS_NODE seeding is no longer necessary for
+this class of coverage.
 
 ## 9. Renderer isn't covered by the shared lint/typecheck-in-eslint setup
 
