@@ -83,6 +83,27 @@ declare global {
     recordCount: number;
   }
 
+  interface MetadataSweepResult {
+    sender: string;
+    messageCount: number;
+    firstSeenAt: Date;
+    lastSeenAt: Date;
+  }
+
+  interface ImapConnectionInput {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    appPassword: string;
+    mailbox: string;
+  }
+
+  interface SyncResult {
+    appended: number;
+    quarantined: number;
+  }
+
   interface AntistalkerApi {
     vault: {
       exists(): Promise<boolean>;
@@ -117,6 +138,17 @@ declare global {
       disclosureText(): Promise<string>;
       confirmationPhrase(): Promise<string>;
       confirm(typedPhrase: string): Promise<DestroyResult>;
+    };
+    onboarding: {
+      pickFile(): Promise<string | undefined>;
+      sweepImessage(dbPath: string): Promise<MetadataSweepResult[]>;
+      sweepAndroidSms(exportFilePath: string): Promise<MetadataSweepResult[]>;
+      sweepImap(connection: ImapConnectionInput): Promise<MetadataSweepResult[]>;
+      connectImessage(dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
+      connectAndroidSms(exportFilePath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
+      connectImap(connection: ImapConnectionInput, selectedIdentifiers: string[]): Promise<SyncResult>;
+      syncNow(source: SourceKind): Promise<SyncResult>;
+      disconnect(source: SourceKind): Promise<void>;
     };
   }
 

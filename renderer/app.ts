@@ -7,12 +7,13 @@ import { renderVaultExportScreen } from "./screens/vault-export.js";
 import { renderOsintScreen } from "./screens/osint.js";
 import { renderSettingsScreen } from "./screens/settings.js";
 import { renderDestroyScreen } from "./screens/destroy.js";
+import { renderOnboardingScreen } from "./screens/onboarding.js";
 
 type AppState =
   | { kind: "loading" }
   | { kind: "lock"; mode: "create" | "unlock"; error?: string }
   | { kind: "support-standalone" }
-  | { kind: "unlocked"; screen: Screen };
+  | { kind: "unlocked"; screen: Screen; onboardingSource?: SourceKind };
 
 const root = document.getElementById("app");
 if (!root) throw new Error("missing #app root element");
@@ -89,10 +90,24 @@ function render(): void {
       renderSupportScreen(screenContainer);
       break;
     case "settings":
-      void renderSettingsScreen(screenContainer, () => navigate("destroy"));
+      void renderSettingsScreen(
+        screenContainer,
+        () => navigate("destroy"),
+        (source) => {
+          state = { kind: "unlocked", screen: "onboarding", onboardingSource: source };
+          render();
+        },
+      );
       break;
     case "destroy":
       void renderDestroyScreen(screenContainer, () => void boot());
+      break;
+    case "onboarding":
+      if (state.onboardingSource) {
+        void renderOnboardingScreen(screenContainer, state.onboardingSource, () => navigate("settings"));
+      } else {
+        navigate("settings");
+      }
       break;
   }
 }
