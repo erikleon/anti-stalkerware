@@ -11,8 +11,9 @@
 import type { Bucket, TriageRow } from "../triage/view";
 import type { Message, SourceKind } from "../types/message";
 import type { MetadataSweepResult } from "../ingest/adapter";
+import type { StoredBoundary, StoredTaggedPhrase } from "../vault/user-context";
 
-export type { Bucket, TriageRow };
+export type { Bucket, TriageRow, StoredBoundary, StoredTaggedPhrase };
 
 export interface UnlockResult {
   /** Never distinguishes "wrong passphrase" from "corrupted vault" — see crypto.ts. */
@@ -99,6 +100,15 @@ export interface AntistalkerApi {
     get(): Promise<Settings>;
     setToastOnTriageAction(value: boolean): Promise<void>;
     listSources(): Promise<SourceStatus[]>;
+  };
+  userContext: {
+    listBoundaries(): Promise<StoredBoundary[]>;
+    /** setAt is a real, user-picked date, not "now" — a boundary is often logged after the fact. */
+    addBoundary(description: string, setAt: Date, appliesToSender?: string): Promise<StoredBoundary>;
+    removeBoundary(id: string): Promise<void>;
+    listTaggedPhrases(): Promise<StoredTaggedPhrase[]>;
+    addTaggedPhrase(phrase: string, note: string): Promise<StoredTaggedPhrase>;
+    removeTaggedPhrase(id: string): Promise<void>;
   };
   onboarding: {
     /** Opens a native file picker; undefined if the user canceled. */

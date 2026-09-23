@@ -54,6 +54,14 @@ const api: AntistalkerApi = {
     syncNow: (source) => ipcRenderer.invoke("onboarding:syncNow", source),
     disconnect: (source) => ipcRenderer.invoke("onboarding:disconnect", source),
   },
+  userContext: {
+    listBoundaries: () => ipcRenderer.invoke("userContext:listBoundaries"),
+    addBoundary: (description, setAt, appliesToSender) => ipcRenderer.invoke("userContext:addBoundary", description, setAt, appliesToSender),
+    removeBoundary: (id) => ipcRenderer.invoke("userContext:removeBoundary", id),
+    listTaggedPhrases: () => ipcRenderer.invoke("userContext:listTaggedPhrases"),
+    addTaggedPhrase: (phrase, note) => ipcRenderer.invoke("userContext:addTaggedPhrase", phrase, note),
+    removeTaggedPhrase: (id) => ipcRenderer.invoke("userContext:removeTaggedPhrase", id),
+  },
 };
 
 contextBridge.exposeInMainWorld("antistalker", api);

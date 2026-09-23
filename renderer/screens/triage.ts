@@ -137,6 +137,14 @@ export async function renderTriageScreen(container: Element): Promise<void> {
       if (row.band === "medium") badgeRow.append(el("span", { class: "badge badge--medium" }, ["Medium"]));
       if (row.reviewed) badgeRow.append(el("span", { class: "badge badge--reviewed" }, ["Reviewed"]));
       const preview = el("div", { class: "message-row-preview" }, [row.latestText]);
+      // Visible, not just a hover title — why a thread was flagged matters
+      // enough that it shouldn't depend on discovering a tooltip.
+      const signalNote =
+        row.signalDetails.length > 0
+          ? el("div", { class: "message-row-signal" }, [
+              row.signalDetails.length === 1 ? row.signalDetails[0]! : `${row.signalDetails[0]} (+${row.signalDetails.length - 1} more)`,
+            ])
+          : undefined;
 
       const openButton = el(
         "button",
@@ -146,7 +154,7 @@ export async function renderTriageScreen(container: Element): Promise<void> {
           tabindex: index === Math.max(focusedIndex, 0) ? "0" : "-1",
           "aria-label": `${row.sender}, ${formatRelativeTime(row.latestSentAt)}${row.reviewed ? ", reviewed" : ""}`,
         },
-        [top, badgeRow, preview],
+        [top, badgeRow, preview, ...(signalNote ? [signalNote] : [])],
       ) as HTMLButtonElement;
       openButton.addEventListener("click", () => {
         focusedIndex = index;

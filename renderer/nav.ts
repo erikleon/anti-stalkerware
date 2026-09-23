@@ -1,7 +1,7 @@
 import { el } from "./dom.js";
 import { ICONS } from "./icons.js";
 
-export type Screen = "triage" | "vault-export" | "osint" | "support" | "settings" | "destroy" | "onboarding";
+export type Screen = "triage" | "vault-export" | "osint" | "support" | "settings" | "destroy" | "onboarding" | "boundaries";
 
 export interface NavItem {
   screen: Screen;
@@ -23,7 +23,7 @@ export function renderNav(current: Screen, osintHasAnyEligible: boolean, navigat
   const nav = el("nav", { class: "app-nav", "aria-label": "App sections" });
   // Onboarding is reached from Settings (a Connect button on a source row),
   // not its own nav-strip entry — highlight Settings as current while it's open.
-  const effectiveCurrent = current === "onboarding" ? "settings" : current;
+  const effectiveCurrent = current === "onboarding" || current === "boundaries" ? "settings" : current;
 
   for (const item of navItems(osintHasAnyEligible)) {
     const isCurrent = item.screen === effectiveCurrent;

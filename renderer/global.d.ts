@@ -24,6 +24,7 @@ declare global {
     reviewed: boolean;
     hidden: boolean;
     band: ToxicityBand;
+    signalDetails: string[];
   }
 
   type MessageProvenance = "live" | "edit-history" | "wal-recovered";
@@ -55,6 +56,19 @@ declare global {
     source: SourceKind;
     label: string;
     connected: boolean;
+  }
+
+  interface StoredBoundary {
+    id: string;
+    setAt: Date;
+    description: string;
+    appliesToSender?: string;
+  }
+
+  interface StoredTaggedPhrase {
+    id: string;
+    phrase: string;
+    note: string;
   }
 
   interface OsintSenderEligibility {
@@ -133,6 +147,14 @@ declare global {
       get(): Promise<Settings>;
       setToastOnTriageAction(value: boolean): Promise<void>;
       listSources(): Promise<SourceStatus[]>;
+    };
+    userContext: {
+      listBoundaries(): Promise<StoredBoundary[]>;
+      addBoundary(description: string, setAt: Date, appliesToSender?: string): Promise<StoredBoundary>;
+      removeBoundary(id: string): Promise<void>;
+      listTaggedPhrases(): Promise<StoredTaggedPhrase[]>;
+      addTaggedPhrase(phrase: string, note: string): Promise<StoredTaggedPhrase>;
+      removeTaggedPhrase(id: string): Promise<void>;
     };
     destroy: {
       disclosureText(): Promise<string>;

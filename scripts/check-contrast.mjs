@@ -33,6 +33,8 @@ const pairs = [
   ["DARK  med-fg/med-bg (badge)", "#d8b568", "#37301f", 4.5],
   ["DARK  reviewed-fg/bg", "#7fa08a", "#17191d", 4.5],
   ["DARK  reviewed-fg/surface", "#7fa08a", "#1e2126", 4.5],
+  ["DARK  med-fg/bg (signal note text)", "#d8b568", "#17191d", 4.5],
+  ["DARK  med-fg/surface (signal note text)", "#d8b568", "#1e2126", 4.5],
   ["DARK  focus-ring/bg (UI, 3:1 rule)", "#9aa4b1", "#17191d", 3.0],
 
   ["LIGHT text/bg", "#1c1e21", "#f4f5f2", 4.5],
@@ -44,6 +46,8 @@ const pairs = [
   ["LIGHT med-fg/med-bg (badge)", "#8f630b", "#fbecd0", 4.5],
   ["LIGHT reviewed-fg/bg", "#5c7657", "#f4f5f2", 4.5],
   ["LIGHT reviewed-fg/surface", "#5c7657", "#ffffff", 4.5],
+  ["LIGHT med-fg/bg (signal note text)", "#8f630b", "#f4f5f2", 4.5],
+  ["LIGHT med-fg/surface (signal note text)", "#8f630b", "#ffffff", 4.5],
   ["LIGHT focus-ring/bg (UI, 3:1 rule)", "#4a525e", "#f4f5f2", 3.0],
 ];
 

@@ -4,6 +4,7 @@ export async function renderSettingsScreen(
   container: Element,
   navigateToDestroy: () => void,
   navigateToOnboarding: (source: SourceKind) => void,
+  navigateToBoundaries: () => void,
 ): Promise<void> {
   const settings = await window.antistalker.settings.get();
   let sources = await window.antistalker.settings.listSources();
@@ -76,6 +77,19 @@ export async function renderSettingsScreen(
     });
     toggleRow.append(checkbox, el("span", {}, ["Show a confirmation toast after Hide / Mark reviewed"]));
     pane.append(toggleRow);
+
+    const boundariesRow = el("div", { class: "list-block", style: "margin-top:8px;" });
+    const boundariesLink = el("div", { class: "list-block-row", style: "flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" });
+    boundariesLink.append(
+      el("div", {}, [
+        el("div", { class: "list-block-row-title" }, ["Boundaries & tagged phrases"]),
+        el("div", { class: "list-block-row-sub" }, ["Helps triage catch patterns that don't read as toxic on their own"]),
+      ]),
+      el("span", { class: "btn" }, ["Open"]),
+    );
+    boundariesLink.addEventListener("click", navigateToBoundaries);
+    boundariesRow.append(boundariesLink);
+    pane.append(boundariesRow);
 
     const dangerZone = el("div", { class: "danger-zone" });
     dangerZone.append(

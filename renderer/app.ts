@@ -8,6 +8,7 @@ import { renderOsintScreen } from "./screens/osint.js";
 import { renderSettingsScreen } from "./screens/settings.js";
 import { renderDestroyScreen } from "./screens/destroy.js";
 import { renderOnboardingScreen } from "./screens/onboarding.js";
+import { renderBoundariesScreen } from "./screens/boundaries.js";
 
 type AppState =
   | { kind: "loading" }
@@ -97,6 +98,7 @@ function render(): void {
           state = { kind: "unlocked", screen: "onboarding", onboardingSource: source };
           render();
         },
+        () => navigate("boundaries"),
       );
       break;
     case "destroy":
@@ -108,6 +110,9 @@ function render(): void {
       } else {
         navigate("settings");
       }
+      break;
+    case "boundaries":
+      void renderBoundariesScreen(screenContainer);
       break;
   }
 }

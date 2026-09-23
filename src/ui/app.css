@@ -170,6 +170,14 @@
   white-space: nowrap;
 }
 
+.message-row-signal {
+  font-size: 11px;
+  color: var(--med-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .message-row-actions {
   display: flex;
   gap: 8px;
@@ -274,6 +282,17 @@
   background: var(--border);
   border-radius: 3px;
   overflow: hidden;
+  /* Without this, .list-block collapses to 0 height whenever it's a flex
+     item with no explicit size (which it always is here, inside
+     .content-pane): per the flexbox spec, overflow other than visible sets
+     an item's automatic minimum size to 0 instead of its content size, so
+     flex-shrink can crush it flat even though there's plenty of room. Rows
+     were still in the DOM with real content and correctly reported their
+     own height — just invisible and unclickable inside a 0-height,
+     clipping parent. Caught because a Playwright click landed on the pane
+     behind it instead of the button; nothing about it looked wrong in a
+     screenshot's text content, only in its actual layout. */
+  min-height: min-content;
 }
 
 .list-block-row {

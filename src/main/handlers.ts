@@ -20,6 +20,8 @@ import type {
   RankedLead,
   Settings,
   SourceStatus,
+  StoredBoundary,
+  StoredTaggedPhrase,
   SyncResult,
   UnlockResult,
 } from "./api";
@@ -131,6 +133,17 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
   );
   bind<[SourceKind], SyncResult>("onboarding:syncNow", async (source) => onboarding.syncNow(requireVault(session), source));
   bind<[SourceKind], void>("onboarding:disconnect", async (source) => onboarding.disconnect(requireVault(session), source));
+
+  bind<[], StoredBoundary[]>("userContext:listBoundaries", async () => requireVault(session).userContext.listBoundaries());
+  bind<[string, Date, string | undefined], StoredBoundary>("userContext:addBoundary", async (description, setAt, appliesToSender) =>
+    requireVault(session).userContext.addBoundary({ description, setAt, ...(appliesToSender ? { appliesToSender } : {}) }),
+  );
+  bind<[string], void>("userContext:removeBoundary", async (id) => requireVault(session).userContext.removeBoundary(id));
+  bind<[], StoredTaggedPhrase[]>("userContext:listTaggedPhrases", async () => requireVault(session).userContext.listTaggedPhrases());
+  bind<[string, string], StoredTaggedPhrase>("userContext:addTaggedPhrase", async (phrase, note) =>
+    requireVault(session).userContext.addTaggedPhrase({ phrase, note }),
+  );
+  bind<[string], void>("userContext:removeTaggedPhrase", async (id) => requireVault(session).userContext.removeTaggedPhrase(id));
 
   bind<[], string>("destroy:disclosureText", async () => DESTROY_DISCLOSURE_TEXT);
   bind<[], string>("destroy:confirmationPhrase", async () => DESTROY_CONFIRMATION_PHRASE);
