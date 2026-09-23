@@ -29,12 +29,19 @@ export function registerHandler<Args extends unknown[], Result>(
 export function registerGated<Args extends unknown[], Result>(
   channel: string,
   sender: (...args: Args) => string,
-  vault: VaultStore,
+  getVault: () => VaultStore | undefined,
   handler: IpcHandler<Args, Result>,
 ): IpcHandler<Args, Result> {
   registry.push({ channel, gated: true });
   return async (...args: Args) => {
-    const allowed = await canUnlockOsint(sender(...args), vault);
+    // A vault-getter, not a fixed instance: the real app registers every
+    // IPC channel once at startup, but which vault (if any) is open
+    // changes as the user locks/unlocks — this must always check the
+    // current one, never one captured at registration time. No vault open
+    // collapses to the same refusal as an ineligible sender; neither case
+    // gets a more specific message.
+    const vault = getVault();
+    const allowed = vault !== undefined && (await canUnlockOsint(sender(...args), vault));
     if (!allowed) {
       throw new Error("OSINT lookup refused: sender is not a flagged vault contact.");
     }

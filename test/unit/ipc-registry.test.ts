@@ -18,7 +18,7 @@ function fakeVault(abusiveSenders: string[]): VaultStore {
 describe("IPC registry", () => {
   it("records every registered channel, gated or not", () => {
     registerHandler("ping", async () => "pong");
-    registerGated("osint:lookup", (sender: string) => sender, fakeVault([]), async () => "result");
+    registerGated("osint:lookup", (sender: string) => sender, () => fakeVault([]), async () => "result");
 
     const channels = listRegisteredHandlers().map((h) => h.channel);
     expect(channels).toContain("ping");
@@ -33,7 +33,7 @@ describe("IPC registry", () => {
     const handler = registerGated(
       "osint:lookup-2",
       (sender: string) => sender,
-      vault,
+      () => vault,
       async (sender: string) => `looked up ${sender}`,
     );
 
@@ -45,10 +45,21 @@ describe("IPC registry", () => {
     const handler = registerGated(
       "osint:lookup-3",
       (sender: string) => sender,
-      vault,
+      () => vault,
       async (sender: string) => `looked up ${sender}`,
     );
 
     await expect(handler("stalker@example.com")).resolves.toBe("looked up stalker@example.com");
+  });
+
+  it("a gated handler refuses when no vault is open, the same as an ineligible sender", async () => {
+    const handler = registerGated(
+      "osint:lookup-4",
+      (sender: string) => sender,
+      () => undefined,
+      async (sender: string) => `looked up ${sender}`,
+    );
+
+    await expect(handler("anyone@example.com")).rejects.toThrow(/refused/i);
   });
 });
