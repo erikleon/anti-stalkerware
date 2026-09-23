@@ -96,20 +96,31 @@ identically but only unit-tested (real chat.db / IMAP server access
 isn't available in this environment); Android SMS is the one path
 verified through a real e2e run.
 
-## 7. Settings UI for boundaries and tagged phrases
+## 7. ~~Settings UI for boundaries and tagged phrases~~ DONE 2026-09-23
 
-`score/signals.ts`'s structural detectors (contact after a marked
-boundary, user-tagged phrases) need a `DetectionContext` built from
-user-authored data, and there's no UI to author it. Right now
-`src/triage/view.ts`'s band assignment (`bandOf()`) is driven by
-toxicity score alone — a thread only reaches "medium" via the ONNX
-classifier's score, never via a fired structural signal. Wiring the
-detectors in once this UI exists is a small change to `bandOf()`/
-`listTriageRows()`; the gap is the settings screen to collect the input.
+Built in two parts. First, `triage/view.ts` was wired to actually run
+`score/signals.ts`'s `StructuralSignalDetector` (all six detectors, not
+just the two that need user input) across every vault message once per
+list render, grouping fired signals by thread — a thread reaches
+"medium" from a fired signal now, not just a toxicity score, and
+`TriageRow.signalDetails` carries the human-readable reason. Second, a
+real screen (`renderer/screens/boundaries.ts`, reached from Settings)
+to author the boundaries and tagged phrases those detectors need,
+stored in the vault via a new `UserContextStore`. Triage rows show the
+fired reason as visible text, not a hover-only tooltip.
 
-Depends on: TODO 6's onboarding flow existing would make this more
-useful but isn't a hard dependency — boundaries/tagged phrases don't
-need a live source, only past vault data.
+Verified end to end: tagging a phrase moves a real seeded message from
+no badge to Medium with the reason shown, and removing the tag reverts
+it (`test/e2e/boundaries-and-tagged-phrases.spec.ts`).
+
+Surfaced a real bug along the way, since fixed: `.list-block` (used by
+five other screens too — Settings sources, onboarding's candidate
+picker, OSINT eligibility, export history, support resources) could
+collapse to 0 height and silently swallow clicks on its rows, per a
+non-obvious flexbox spec interaction with `overflow: hidden`. See the
+fix's commit message and the comment on `.list-block` in `app.css` for
+the mechanism — nothing about it was visible in a screenshot's text
+content, only in an actual click landing somewhere else.
 
 ## 8. ~~Deeper e2e coverage with seeded vault data~~ DONE 2026-09-23
 
