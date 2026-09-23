@@ -13,18 +13,40 @@ section, which their interviews with 27 journalists and activists apparently
 found important enough to build as a first-class part of the app — is
 TODO item 5 below.
 
-## 2. Harden vault key management
+## 2. ~~Harden vault key management~~ DONE 2026-09-23
 
-`vault/crypto.ts` needs a concrete spec, not just "encrypted with a separate
-passphrase": KDF choice and parameters (argon2id), locking decrypted material
-in memory, an inactivity auto-lock timeout, clipboard clearing after copy, and
-confirming SQLite's own WAL/journal files never leak plaintext outside the
-encrypted container. The threat model is a live unlocked session under a
-laptop-password-holding adversary, which is the more realistic attack window
-than an offline file.
+Addressed the threat model directly (a live unlocked session under a
+laptop-password-holding adversary, the more realistic attack window
+than an offline file): real inactivity auto-lock, `Settings.autoLockMinutes`
+(default 15, 0 disables), checked every 30s in `main/index.ts` and reset
+on every IPC request via `VaultSession.touch()`. A manual "Lock now" in
+Settings once the mechanism existed to back it. A new test confirms
+message text and raw payloads never leak into the vault's `-wal` file
+either, not just the checkpointed main db.
 
-Depends on: `vault/crypto.ts` and `vault/store.ts` existing (parallelization
-lane 2).
+Two of the five original sub-items are a deliberate decision and an
+accepted platform limitation, not silently dropped — see `vault/crypto.ts`'s
+doc comment:
+- **argon2id over scrypt**: declined. Would need a native/WASM dependency
+  for a marginal hardening gain over scrypt already run at OWASP's
+  recommended memory-hard cost — not worth the native-build fragility
+  this project already got burned by once.
+- **Locking key material out of swap**: not possible from Node/V8
+  without a native addon. The inactivity timeout is the real mitigation
+  for this specific threat — it shortens the window, since actually
+  closing it isn't available on this stack.
+- **Clipboard clearing**: moot — nothing in the app copies vault content
+  to the clipboard today.
+
+Verified: `VaultSession`'s idle logic is unit-tested with fake timers
+(touch/isIdle/unlock-resets-clock/lock-clears-idle). The manual "Lock
+now" flow has a real e2e test (`test/e2e/lock-now.spec.ts`). The actual
+auto-lock timer firing was verified by hand against the real running
+app (set `autoLockMinutes` to 1, waited ~70s, watched it lock) rather
+than automated — a real e2e test for it would need a 60-100s run just
+for this one mechanism, which isn't worth the CI cost given the
+underlying logic is already covered by the fake-timer unit tests; this
+is a deliberate coverage tradeoff, not an oversight.
 
 ## 3. Design the shared-device / coerced-unlock safety flow
 
