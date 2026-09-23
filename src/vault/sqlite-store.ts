@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import type { Message, QuarantinedRecord, RawRecord } from "../types/message";
-import type { AppendClassification, VaultStore } from "./store";
+import type { AppendClassification, ThreadSummary, VaultStore } from "./store";
 import type { VaultKey } from "./crypto";
 
 /**
@@ -56,6 +56,7 @@ export class SqliteVaultStore implements VaultStore {
         edit_history BLOB,
         retracted_at TEXT,
         crosses_abuse_threshold INTEGER NOT NULL DEFAULT 0,
+        toxicity_score REAL NOT NULL DEFAULT 0,
         appended_at TEXT NOT NULL,
         PRIMARY KEY (message_id, raw_record_hash),
         FOREIGN KEY (raw_record_hash) REFERENCES raw_records(hash)
@@ -87,8 +88,8 @@ export class SqliteVaultStore implements VaultStore {
     this.db
       .prepare(
         `INSERT OR IGNORE INTO messages
-          (message_id, raw_record_hash, source, thread_id, sender, from_self, text, sent_at, provenance, edit_history, retracted_at, crosses_abuse_threshold, appended_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (message_id, raw_record_hash, source, thread_id, sender, from_self, text, sent_at, provenance, edit_history, retracted_at, crosses_abuse_threshold, toxicity_score, appended_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         message.id,
@@ -103,6 +104,7 @@ export class SqliteVaultStore implements VaultStore {
         editHistoryBlob,
         message.retractedAt ? message.retractedAt.toISOString() : null,
         classification?.crossesAbuseThreshold ? 1 : 0,
+        classification?.toxicityScore ?? 0,
         new Date().toISOString(),
       );
   }
@@ -132,6 +134,53 @@ export class SqliteVaultStore implements VaultStore {
       )
       .all(threadId, threadId) as MessageRow[];
     return rows.map((row) => this.rowToMessage(row));
+  }
+
+  async listThreads(): Promise<ThreadSummary[]> {
+    // Two aggregates over the same table: one picks out the actual latest
+    // row per thread (by rowid, same tie-break as get()/list()), the other
+    // computes message_count/max toxicity/whether any message ever crossed
+    // the threshold. Joined together so a thread's summary always reflects
+    // its full history, not just its latest message's own classification.
+    const rows = this.db
+      .prepare(
+        `SELECT
+           m.thread_id AS thread_id,
+           m.sender AS sender,
+           m.message_id AS latest_message_id,
+           m.text AS latest_text,
+           m.sent_at AS latest_sent_at,
+           agg.message_count AS message_count,
+           agg.max_toxicity_score AS max_toxicity_score,
+           agg.crosses_abuse_threshold AS crosses_abuse_threshold
+         FROM messages m
+         INNER JOIN (
+           SELECT thread_id, MAX(rowid) AS latest_rowid
+           FROM messages
+           GROUP BY thread_id
+         ) latest ON latest.thread_id = m.thread_id AND latest.latest_rowid = m.rowid
+         INNER JOIN (
+           SELECT thread_id,
+                  COUNT(DISTINCT message_id) AS message_count,
+                  MAX(toxicity_score) AS max_toxicity_score,
+                  MAX(crosses_abuse_threshold) AS crosses_abuse_threshold
+           FROM messages
+           GROUP BY thread_id
+         ) agg ON agg.thread_id = m.thread_id
+         ORDER BY m.sent_at DESC`,
+      )
+      .all() as ThreadSummaryRow[];
+
+    return rows.map((row) => ({
+      threadId: row.thread_id,
+      sender: row.sender,
+      latestMessageId: row.latest_message_id,
+      latestText: this.key.decrypt(row.latest_text).toString("utf8"),
+      latestSentAt: new Date(row.latest_sent_at),
+      messageCount: row.message_count,
+      maxToxicityScore: row.max_toxicity_score,
+      crossesAbuseThreshold: row.crosses_abuse_threshold === 1,
+    }));
   }
 
   async getRawRecord(hash: string): Promise<RawRecord | undefined> {
@@ -209,6 +258,7 @@ interface MessageRow {
   edit_history: Buffer | null;
   retracted_at: string | null;
   crosses_abuse_threshold: number;
+  toxicity_score: number;
   appended_at: string;
 }
 
@@ -225,4 +275,15 @@ interface QuarantineRow {
   source: string;
   reason: string;
   quarantined_at: string;
+}
+
+interface ThreadSummaryRow {
+  thread_id: string;
+  sender: string;
+  latest_message_id: string;
+  latest_text: Buffer;
+  latest_sent_at: string;
+  message_count: number;
+  max_toxicity_score: number;
+  crosses_abuse_threshold: number;
 }

@@ -7,6 +7,7 @@ function fakeVault(abusiveSenders: string[]): VaultStore {
     append: async () => undefined,
     get: async () => undefined,
     list: async () => [],
+    listThreads: async () => [],
     getRawRecord: async () => undefined,
     isAbusiveSender: async (sender) => abusiveSenders.includes(sender),
     recordQuarantine: async () => undefined,

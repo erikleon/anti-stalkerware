@@ -104,6 +104,49 @@ describe("SqliteVaultStore", () => {
     expect(list).toHaveLength(1);
   });
 
+  it("listThreads returns one row per thread with its latest message and aggregates", async () => {
+    await store.append(
+      buildRaw({ hash: "h1" }),
+      buildMessage({ id: "m1", rawRecordHash: "h1", threadId: "thread-a", text: "first", sentAt: new Date("2026-01-01T00:00:00Z") }),
+      { crossesAbuseThreshold: false, toxicityScore: 0.2 },
+    );
+    await store.append(
+      buildRaw({ hash: "h2" }),
+      buildMessage({ id: "m2", rawRecordHash: "h2", threadId: "thread-a", text: "second", sentAt: new Date("2026-01-02T00:00:00Z") }),
+      { crossesAbuseThreshold: true, toxicityScore: 0.9 },
+    );
+    await store.append(
+      buildRaw({ hash: "h3" }),
+      buildMessage({ id: "m3", rawRecordHash: "h3", threadId: "thread-b", sender: "other@example.com", text: "unrelated" }),
+    );
+
+    const threads = await store.listThreads();
+    expect(threads).toHaveLength(2);
+
+    const threadA = threads.find((t) => t.threadId === "thread-a");
+    expect(threadA?.latestMessageId).toBe("m2");
+    expect(threadA?.latestText).toBe("second");
+    expect(threadA?.messageCount).toBe(2);
+    expect(threadA?.maxToxicityScore).toBe(0.9);
+    expect(threadA?.crossesAbuseThreshold).toBe(true);
+  });
+
+  it("listThreads orders by most recent activity first", async () => {
+    await store.append(buildRaw({ hash: "h1" }), buildMessage({ id: "m1", rawRecordHash: "h1", threadId: "thread-old", sentAt: new Date("2026-01-01T00:00:00Z") }));
+    await store.append(buildRaw({ hash: "h2" }), buildMessage({ id: "m2", rawRecordHash: "h2", threadId: "thread-new", sentAt: new Date("2026-02-01T00:00:00Z") }));
+
+    const threads = await store.listThreads();
+    expect(threads.map((t) => t.threadId)).toEqual(["thread-new", "thread-old"]);
+  });
+
+  it("listThreads counts distinct messages, not edit-history row versions", async () => {
+    await store.append(buildRaw({ hash: "h1" }), buildMessage({ id: "m1", rawRecordHash: "h1", text: "first version", sentAt: new Date("2026-01-01T00:00:00Z") }));
+    await store.append(buildRaw({ hash: "h2" }), buildMessage({ id: "m1", rawRecordHash: "h2", text: "edited version", sentAt: new Date("2026-01-01T00:00:01Z") }));
+
+    const threads = await store.listThreads();
+    expect(threads[0]?.messageCount).toBe(1);
+  });
+
   it("isAbusiveSender reflects classification passed at append time", async () => {
     await store.append(buildRaw(), buildMessage(), { crossesAbuseThreshold: true });
     expect(await store.isAbusiveSender("stalker@example.com")).toBe(true);

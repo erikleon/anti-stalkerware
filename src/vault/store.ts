@@ -10,6 +10,27 @@ import type { Message, QuarantinedRecord, RawRecord } from "../types/message";
 export interface AppendClassification {
   /** Whether this message crossed the abuse threshold — see score/classifier.ts. Drives isAbusiveSender, which the OSINT gate depends on. */
   crossesAbuseThreshold: boolean;
+  /** Raw score backing crossesAbuseThreshold, kept alongside it so the triage UI can show a High/Medium band instead of a single cutoff. Optional so existing callers that only know the boolean don't break; defaults to 0 when absent. */
+  toxicityScore?: number;
+}
+
+/**
+ * At-a-glance summary of one thread's most recent activity, for the bucket
+ * rail and message list — the triage screen groups by thread, not by
+ * individual message. `latestMessageId` is the key the triage screen writes
+ * reviewed/hidden state against (see vault/triage-state.ts): a thread is
+ * "needs review" whenever its latest message hasn't been marked reviewed or
+ * hidden, so new activity on an already-reviewed thread reopens it.
+ */
+export interface ThreadSummary {
+  threadId: string;
+  sender: string;
+  latestMessageId: string;
+  latestText: string;
+  latestSentAt: Date;
+  messageCount: number;
+  maxToxicityScore: number;
+  crossesAbuseThreshold: boolean;
 }
 
 export interface VaultStore {
@@ -19,6 +40,9 @@ export interface VaultStore {
   get(messageId: string): Promise<Message | undefined>;
 
   list(threadId: string): Promise<Message[]>;
+
+  /** One row per thread, most recent activity first. The only way the triage UI discovers which threads exist. */
+  listThreads(): Promise<ThreadSummary[]>;
 
   /** Returns the preserved raw record a message was derived from, for export or re-parsing. */
   getRawRecord(hash: string): Promise<RawRecord | undefined>;
