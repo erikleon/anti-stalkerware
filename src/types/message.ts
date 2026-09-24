@@ -10,7 +10,7 @@
  * future parser fix re-derive everything from what we originally captured.
  */
 
-export type SourceKind = "imessage" | "android-sms" | "imap";
+export type SourceKind = "imessage" | "android-sms" | "imap" | "instagram";
 
 /** The source bytes as acquired, before any parsing. */
 export interface RawRecord {

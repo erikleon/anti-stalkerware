@@ -35,4 +35,6 @@ export interface MetadataSweepResult {
   messageCount: number;
   firstSeenAt: Date;
   lastSeenAt: Date;
+  /** Other names the same sender is known by in this source — e.g. an Instagram thread folder that holds their username while `sender` is their display name. */
+  aliases?: string[];
 }
