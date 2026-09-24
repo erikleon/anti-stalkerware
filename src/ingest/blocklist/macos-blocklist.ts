@@ -18,7 +18,10 @@ import { parseBuffer } from "bplist-parser";
  * format a later macOS adds) is counted in `skipped`, not dropped
  * silently, so the UI can say that some entries weren't read.
  */
-export const DEFAULT_MACOS_BLOCKLIST_PATH = join(homedir(), "Library", "Preferences", "com.apple.cmfsyncagent.plist");
+// DOCKET_MACOS_BLOCKLIST_PATH points the e2e tests at a fixture instead
+// of the real block list of whoever runs them. Read-only either way.
+export const DEFAULT_MACOS_BLOCKLIST_PATH =
+  process.env["DOCKET_MACOS_BLOCKLIST_PATH"] ?? join(homedir(), "Library", "Preferences", "com.apple.cmfsyncagent.plist");
 
 export interface BlockedIdentifier {
   kind: "phone" | "email";

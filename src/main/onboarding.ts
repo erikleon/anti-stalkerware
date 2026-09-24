@@ -3,7 +3,7 @@ import type { Vault } from "../vault/vault";
 import type { SourceConfig } from "../vault/source-config";
 import type { SourceKind } from "../types/message";
 import type { MetadataSweepResult } from "../ingest/adapter";
-import type { ImapConnectionInput, SyncResult } from "./api";
+import type { BlocklistSummary, ImapConnectionInput, SweepResponse, SyncResult } from "./api";
 import { openChatDbReadOnly } from "../ingest/imessage/reader";
 import { sweepMessageMetadata } from "../ingest/imessage/metadata-sweep";
 import { ImessageAdapter } from "../ingest/imessage/adapter";
@@ -14,6 +14,8 @@ import { sweepImapSenders } from "../ingest/imap/metadata-sweep";
 import { ImapAdapter } from "../ingest/imap/adapter";
 import { runIngest } from "../pipeline/run-ingest";
 import { expandHome } from "./paths";
+import { readMacosBlocklist, type BlockedIdentifier } from "../ingest/blocklist/macos-blocklist";
+import { accountMatchesIdentifier, type KnownAccountStore } from "../vault/known-accounts";
 
 /**
  * The logic behind onboarding's IPC channels — one function per step, each
@@ -111,6 +113,82 @@ export async function disconnect(vault: Vault, source: SourceKind): Promise<void
     await vault.credentials.remove(config.user);
   }
   vault.sourceConfig.remove(source);
+}
+
+/**
+ * Reads this Mac's block list for onboarding, never throwing: a block
+ * list that can't be read must not stop someone from importing their
+ * messages. A read failure is returned as status "error" with the reason,
+ * and the UI shows it, so it isn't silent either.
+ */
+export async function loadBlocklist(read: typeof readMacosBlocklist = readMacosBlocklist): Promise<{ summary: BlocklistSummary; entries: BlockedIdentifier[] }> {
+  try {
+    const result = await read();
+    if (result.status !== "ok") return { summary: { status: result.status, blockedCount: 0, skipped: 0 }, entries: [] };
+    return { summary: { status: "ok", blockedCount: result.entries.length, skipped: result.skipped }, entries: result.entries };
+  } catch (err) {
+    return { summary: { status: "error", blockedCount: 0, skipped: 0, error: (err as Error).message }, entries: [] };
+  }
+}
+
+/**
+ * Marks each scanned sender that is on this Mac's block list, or is
+ * already a known account. Onboarding uses this to put blocked senders
+ * first and pre-select them: their history from before the block is the
+ * baseline OSINT later compares a new number against.
+ */
+export function annotateSweep(
+  rows: readonly MetadataSweepResult[],
+  knownAccounts: KnownAccountStore,
+  blocked: readonly BlockedIdentifier[],
+  summary: BlocklistSummary,
+): SweepResponse {
+  return {
+    rows: rows.map((row) => {
+      const known = knownAccounts.findMatch(row.sender);
+      const isBlocked = blocked.some((entry) => accountMatchesIdentifier(entry, row.sender));
+      return {
+        ...row,
+        blockedOnThisMac: isBlocked,
+        ...(known ? { knownAccountLabel: known.personLabel } : {}),
+      };
+    }),
+    blocklist: summary,
+  };
+}
+
+/**
+ * Saves the blocked senders the user chose to import as known accounts,
+ * each under its own identifier as the person label until the user
+ * groups them (a block list mixes spam with real people, so they're
+ * never merged into one person automatically). Re-reads the block list
+ * here rather than trusting the renderer's copy: only identifiers that
+ * really are blocked on this Mac get the "macos-blocklist" origin.
+ */
+export async function saveBlockedAsKnown(
+  knownAccounts: KnownAccountStore,
+  identifiers: readonly string[],
+  read: typeof readMacosBlocklist = readMacosBlocklist,
+): Promise<{ added: number; alreadyKnown: number }> {
+  const { entries } = await loadBlocklist(read);
+  const inputs = identifiers.flatMap((identifier) => {
+    const entry = entries.find((e) => accountMatchesIdentifier(e, identifier));
+    return entry ? [{ personLabel: identifier, kind: entry.kind, value: identifier, origin: "macos-blocklist" as const }] : [];
+  });
+  return knownAccounts.addMany(inputs);
+}
+
+/** Imports this Mac's whole block list as known accounts, one person per entry. */
+export async function importMacosBlocklist(
+  knownAccounts: KnownAccountStore,
+  read: typeof readMacosBlocklist = readMacosBlocklist,
+): Promise<BlocklistSummary & { added: number; alreadyKnown: number }> {
+  const { summary, entries } = await loadBlocklist(read);
+  if (summary.status === "error") throw new Error(summary.error);
+  const result = knownAccounts.addMany(
+    entries.map((entry) => ({ personLabel: entry.value, kind: entry.kind, value: entry.value, origin: "macos-blocklist" as const })),
+  );
+  return { ...summary, ...result };
 }
 
 function toImapConnectionConfig(connection: ImapConnectionInput) {

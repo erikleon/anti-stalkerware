@@ -8,10 +8,11 @@ import { buildExportPayload, listAllMessages, EXPORT_DISCLOSURE_TEXT } from "../
 import { listEligibility } from "../osint/eligibility";
 import { rankCandidates } from "../osint/rank";
 import { buildCandidate } from "../osint/verify";
+import { compareWithKnownAccounts } from "../osint/known-accounts";
+import { accountMatchesIdentifier, type KnownAccountKind, type StoredKnownAccount } from "../vault/known-accounts";
 import type { VaultStore } from "../vault/store";
 import { DESTROY_CONFIRMATION_PHRASE, DESTROY_DISCLOSURE_TEXT, confirmationMatches, destroyVault } from "../vault/destroy";
 import type { Message, SourceKind } from "../types/message";
-import type { MetadataSweepResult } from "../ingest/adapter";
 import * as onboarding from "./onboarding";
 import type {
   CandidateInput,
@@ -20,12 +21,14 @@ import type {
   ExportResult,
   HotkeyStatus,
   ImapConnectionInput,
+  KnownAccountImportResult,
   OsintSenderEligibility,
   RankedLead,
   Settings,
   SourceStatus,
   StoredBoundary,
   StoredTaggedPhrase,
+  SweepResponse,
   SyncResult,
   UnlockResult,
 } from "./api";
@@ -127,6 +130,37 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
     return ranked!;
   });
 
+  // Same gate as checkCandidate: comparing a sender against the user's
+  // known accounts is still OSINT. Only threads whose sender is one of the
+  // known accounts are loaded as writing baselines, not the whole vault.
+  bindGated<[string], RankedLead[]>("osint:compareKnownAccounts", (sender) => sender, session, async (sender) => {
+    const vault = requireVault(session);
+    const knownAccounts = vault.knownAccounts.list();
+    const senderMessages = await messagesFromSender(vault.store, sender);
+    const baselineSenders = (await vault.store.listThreads())
+      .map((t) => t.sender)
+      .filter((s, i, all) => all.indexOf(s) === i && s !== sender && knownAccounts.some((a) => accountMatchesIdentifier(a, s)));
+    const messagesBySender = new Map<string, Message[]>();
+    for (const baselineSender of baselineSenders) {
+      messagesBySender.set(baselineSender, await messagesFromSender(vault.store, baselineSender));
+    }
+    return rankCandidates(compareWithKnownAccounts(knownAccounts, sender, senderMessages, messagesBySender));
+  });
+
+  // The user's own list, not OSINT output — not gated. Adding an account
+  // here looks nothing up; it only records what the user already knows.
+  bind<[], StoredKnownAccount[]>(session, "knownAccounts:list", async () => requireVault(session).knownAccounts.list());
+  bind<[string, KnownAccountKind, string], StoredKnownAccount>(session, "knownAccounts:add", async (personLabel, kind, value) =>
+    requireVault(session).knownAccounts.add({ personLabel, kind, value, origin: "manual" }),
+  );
+  bind<[string, string], void>(session, "knownAccounts:setPersonLabel", async (id, personLabel) =>
+    requireVault(session).knownAccounts.setPersonLabel(id, personLabel),
+  );
+  bind<[string], void>(session, "knownAccounts:remove", async (id) => requireVault(session).knownAccounts.remove(id));
+  bind<[], KnownAccountImportResult>(session, "knownAccounts:importMacosBlocklist", async () =>
+    onboarding.importMacosBlocklist(requireVault(session).knownAccounts),
+  );
+
   bind<[], Message[]>(session, "vaultExport:listAll", async () => listAllMessages(requireVault(session).store));
   bind<[], string>(session, "vaultExport:disclosureText", async () => EXPORT_DISCLOSURE_TEXT);
   bind<[], ExportResult | undefined>(session, "vaultExport:exportToFile", async () => exportToFile(session, mainWindow));
@@ -153,9 +187,20 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, { properties: ["openFile"] });
     return canceled ? undefined : filePaths[0];
   });
-  bind<[string], MetadataSweepResult[]>(session, "onboarding:sweepImessage", async (dbPath) => onboarding.sweepImessage(dbPath));
-  bind<[string], MetadataSweepResult[]>(session, "onboarding:sweepAndroidSms", async (exportFilePath) => onboarding.sweepAndroidSms(exportFilePath));
-  bind<[ImapConnectionInput], MetadataSweepResult[]>(session, "onboarding:sweepImap", async (connection) => onboarding.sweepImap(connection));
+  // Every sweep is marked against this Mac's block list and the known
+  // accounts, so blocked senders show up first in the picker.
+  async function annotated(rows: Parameters<typeof onboarding.annotateSweep>[0]): Promise<SweepResponse> {
+    const { summary, entries } = await onboarding.loadBlocklist();
+    return onboarding.annotateSweep(rows, requireVault(session).knownAccounts, entries, summary);
+  }
+  bind<[string], SweepResponse>(session, "onboarding:sweepImessage", async (dbPath) => annotated(await onboarding.sweepImessage(dbPath)));
+  bind<[string], SweepResponse>(session, "onboarding:sweepAndroidSms", async (exportFilePath) =>
+    annotated(await onboarding.sweepAndroidSms(exportFilePath)),
+  );
+  bind<[ImapConnectionInput], SweepResponse>(session, "onboarding:sweepImap", async (connection) => annotated(await onboarding.sweepImap(connection)));
+  bind<[string[]], { added: number; alreadyKnown: number }>(session, "onboarding:saveBlockedAsKnown", async (identifiers) =>
+    onboarding.saveBlockedAsKnown(requireVault(session).knownAccounts, identifiers),
+  );
   bind<[string, string[]], SyncResult>(session, "onboarding:connectImessage", async (dbPath, selected) =>
     onboarding.connectImessage(requireVault(session), dbPath, selected),
   );

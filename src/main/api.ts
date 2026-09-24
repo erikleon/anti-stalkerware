@@ -14,8 +14,9 @@ import type { MetadataSweepResult } from "../ingest/adapter";
 import type { StoredBoundary, StoredTaggedPhrase } from "../vault/user-context";
 import type { CandidateInput } from "../osint/candidate-input";
 import type { OsintSignal } from "../osint/graph";
+import type { KnownAccountKind, StoredKnownAccount } from "../vault/known-accounts";
 
-export type { Bucket, TriageRow, StoredBoundary, StoredTaggedPhrase, CandidateInput, OsintSignal };
+export type { Bucket, TriageRow, StoredBoundary, StoredTaggedPhrase, CandidateInput, OsintSignal, KnownAccountKind, StoredKnownAccount };
 
 export interface UnlockResult {
   /** Never distinguishes "wrong passphrase" from "corrupted vault" — see crypto.ts. */
@@ -83,6 +84,31 @@ export interface SyncResult {
   quarantined: number;
 }
 
+/** What onboarding learned from this Mac's block list — see ingest/blocklist/macos-blocklist.ts. */
+export interface BlocklistSummary {
+  status: "ok" | "not-found" | "unsupported-platform" | "error";
+  blockedCount: number;
+  /** Block list entries that weren't a phone number or email, so couldn't be read. */
+  skipped: number;
+  error?: string;
+}
+
+export interface SweepRow extends MetadataSweepResult {
+  blockedOnThisMac: boolean;
+  /** Set when this sender is already a known account; the person label the user gave it. */
+  knownAccountLabel?: string;
+}
+
+export interface SweepResponse {
+  rows: SweepRow[];
+  blocklist: BlocklistSummary;
+}
+
+export interface KnownAccountImportResult extends BlocklistSummary {
+  added: number;
+  alreadyKnown: number;
+}
+
 export interface DocketApi {
   vault: {
     exists(): Promise<boolean>;
@@ -108,6 +134,16 @@ export interface DocketApi {
     eligibleSenders(): Promise<OsintSenderEligibility[]>;
     /** Verify-mode only: checks one candidate the user already named against vault-held signals for this sender. Cannot discover who someone is from a bare identifier — see DESIGN.md's OSINT collector decision. */
     checkCandidate(sender: string, candidate: CandidateInput): Promise<RankedLead>;
+    /** Compares this sender against every person in the known-accounts list, one lead per person, best first. Same gate and same verify-mode limits as checkCandidate. */
+    compareKnownAccounts(sender: string): Promise<RankedLead[]>;
+  };
+  knownAccounts: {
+    list(): Promise<StoredKnownAccount[]>;
+    add(personLabel: string, kind: KnownAccountKind, value: string): Promise<StoredKnownAccount>;
+    setPersonLabel(id: string, personLabel: string): Promise<void>;
+    remove(id: string): Promise<void>;
+    /** Adds every entry on this Mac's block list, each as its own person until relabeled. */
+    importMacosBlocklist(): Promise<KnownAccountImportResult>;
   };
   vaultExport: {
     listAll(): Promise<Message[]>;
@@ -133,9 +169,11 @@ export interface DocketApi {
   onboarding: {
     /** Opens a native file picker; undefined if the user canceled. */
     pickFile(): Promise<string | undefined>;
-    sweepImessage(dbPath: string): Promise<MetadataSweepResult[]>;
-    sweepAndroidSms(exportFilePath: string): Promise<MetadataSweepResult[]>;
-    sweepImap(connection: ImapConnectionInput): Promise<MetadataSweepResult[]>;
+    sweepImessage(dbPath: string): Promise<SweepResponse>;
+    sweepAndroidSms(exportFilePath: string): Promise<SweepResponse>;
+    sweepImap(connection: ImapConnectionInput): Promise<SweepResponse>;
+    /** Saves the chosen senders that are on this Mac's block list as known accounts. Senders not on the block list are ignored. */
+    saveBlockedAsKnown(identifiers: string[]): Promise<{ added: number; alreadyKnown: number }>;
     /** Saves the config, stores the credential (imap only), and runs the first ingest — one round trip instead of connect-then-sync. */
     connectImessage(dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
     connectAndroidSms(exportFilePath: string, selectedIdentifiers: string[]): Promise<SyncResult>;

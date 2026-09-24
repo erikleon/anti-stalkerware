@@ -33,6 +33,14 @@ const api: DocketApi = {
   osint: {
     eligibleSenders: () => ipcRenderer.invoke("osint:eligibleSenders"),
     checkCandidate: (sender, candidate) => ipcRenderer.invoke("osint:checkCandidate", sender, candidate),
+    compareKnownAccounts: (sender) => ipcRenderer.invoke("osint:compareKnownAccounts", sender),
+  },
+  knownAccounts: {
+    list: () => ipcRenderer.invoke("knownAccounts:list"),
+    add: (personLabel, kind, value) => ipcRenderer.invoke("knownAccounts:add", personLabel, kind, value),
+    setPersonLabel: (id, personLabel) => ipcRenderer.invoke("knownAccounts:setPersonLabel", id, personLabel),
+    remove: (id) => ipcRenderer.invoke("knownAccounts:remove", id),
+    importMacosBlocklist: () => ipcRenderer.invoke("knownAccounts:importMacosBlocklist"),
   },
   vaultExport: {
     listAll: () => ipcRenderer.invoke("vaultExport:listAll"),
@@ -56,6 +64,7 @@ const api: DocketApi = {
     sweepImessage: (dbPath) => ipcRenderer.invoke("onboarding:sweepImessage", dbPath),
     sweepAndroidSms: (exportFilePath) => ipcRenderer.invoke("onboarding:sweepAndroidSms", exportFilePath),
     sweepImap: (connection) => ipcRenderer.invoke("onboarding:sweepImap", connection),
+    saveBlockedAsKnown: (identifiers) => ipcRenderer.invoke("onboarding:saveBlockedAsKnown", identifiers),
     connectImessage: (dbPath, selectedIdentifiers) => ipcRenderer.invoke("onboarding:connectImessage", dbPath, selectedIdentifiers),
     connectAndroidSms: (exportFilePath, selectedIdentifiers) =>
       ipcRenderer.invoke("onboarding:connectAndroidSms", exportFilePath, selectedIdentifiers),
