@@ -47,4 +47,22 @@ test.describe("onboarding: error handling", () => {
 
     await app.close();
   });
+
+  test("scanning IMAP with every field blank shows a plain message, not a bare 'Error:' prefix", async () => {
+    const app = await electron.launch({ args: [".", `--user-data-dir=${userDataDir}`] });
+    const window = await app.firstWindow();
+    await window.locator("#pass").fill("correct horse battery staple");
+    await window.locator('button[type="submit"]').click();
+
+    await window.locator('.app-nav a[aria-label="Settings"]').click();
+    const imapRow = window.locator(".list-block-row", { hasText: "Email (IMAP)" });
+    await imapRow.getByRole("button", { name: "Connect" }).click();
+    await window.getByRole("button", { name: "Scan" }).click();
+
+    const errorText = window.locator(".content-pane p").last();
+    await expect(errorText).not.toContainText("Error invoking remote method");
+    await expect(errorText).not.toHaveText(/^Error:/);
+
+    await app.close();
+  });
 });

@@ -36,7 +36,7 @@ export function showToast(message: string): void {
  */
 export function ipcErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
-  return raw.replace(/^Error invoking remote method '[^']*':\s*/, "").replace(/^[A-Za-z]+Error:\s*/, "");
+  return raw.replace(/^Error invoking remote method '[^']*':\s*/, "").replace(/^(?:[A-Za-z]*Error):\s*/, "");
 }
 
 export function formatRelativeTime(date: Date): string {
