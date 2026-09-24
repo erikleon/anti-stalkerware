@@ -50,10 +50,20 @@ export function startOfLocalDay(isoDate: string, timeZone: string): Date {
   return new Date(start.epochMilliseconds);
 }
 
-/** The local calendar date ("2026-09-23") an instant falls on in a time zone. */
+/**
+ * The local calendar date ("2026-09-23") an instant falls on in a time
+ * zone. Before 1970, which named zones can't represent here, it's the UTC
+ * date marked " UTC" — a wrong or corrupt timestamp shouldn't fail the
+ * screen that shows it.
+ */
 export function localDateString(instant: Date, timeZone: string): string {
-  const { year, month, day } = projectInstant(instant.getTime(), timeZone);
-  return toPlainDateString({ year, month, day });
+  try {
+    const { year, month, day } = projectInstant(instant.getTime(), timeZone);
+    return toPlainDateString({ year, month, day });
+  } catch (err) {
+    if (isDateTimeError(err) && err.code === "OUT_OF_RANGE") return `${instant.toISOString().slice(0, 10)} UTC`;
+    throw err;
+  }
 }
 
 /**

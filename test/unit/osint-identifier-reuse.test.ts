@@ -71,4 +71,10 @@ describe("checkIdentifierReuse", () => {
   it("refuses to match on too few digits instead of matching almost anything", () => {
     expect(checkIdentifierReuse("phone", "555", "+15551234567", [])).toBeUndefined();
   });
+
+  it("dates a match by the local day the message arrived, not the UTC day", () => {
+    const messages = [buildMessage({ text: "reach me at other.address@example.com", sentAt: new Date("2026-09-24T01:00:00Z") })];
+    const signal = checkIdentifierReuse("email", "other.address@example.com", "unknown-sender@example.com", messages, "America/New_York");
+    expect(signal?.source).toBe("appears in a message the sender wrote, 2026-09-23");
+  });
 });

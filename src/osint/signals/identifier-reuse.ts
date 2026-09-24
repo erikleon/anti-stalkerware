@@ -1,5 +1,6 @@
 import { normalizeIdentifier } from "../unlock";
 import { normalizePhoneNumber } from "../../ingest/android-sms/reader";
+import { localDateString, localTimeZone } from "../../time/local-time";
 import type { Message } from "../../types/message";
 import type { OsintSignal, OsintSignalKind } from "../graph";
 
@@ -31,8 +32,10 @@ export function checkIdentifierReuse(
   candidateValue: string,
   senderIdentifier: string,
   senderMessages: readonly Message[],
+  /** The zone message dates are shown in: the day the person saw the message arrive, not the UTC day. */
+  timeZone: string = localTimeZone(),
 ): Omit<OsintSignal, "candidateId"> | undefined {
-  if (kind === "phone") return checkPhoneReuse(candidateValue, senderIdentifier, senderMessages);
+  if (kind === "phone") return checkPhoneReuse(candidateValue, senderIdentifier, senderMessages, timeZone);
 
   const needle = normalizeIdentifier(candidateValue);
   if (needle.length === 0) return undefined;
@@ -50,7 +53,7 @@ export function checkIdentifierReuse(
     if (normalizeIdentifier(message.text).includes(needle)) {
       return {
         kind: SIGNAL_KIND[kind],
-        source: `appears in a message the sender wrote, ${message.sentAt.toISOString().slice(0, 10)}`,
+        source: `appears in a message the sender wrote, ${localDateString(message.sentAt, timeZone)}`,
         confidence: 0.7,
       };
     }
@@ -77,6 +80,7 @@ function checkPhoneReuse(
   candidateValue: string,
   senderIdentifier: string,
   senderMessages: readonly Message[],
+  timeZone: string,
 ): Omit<OsintSignal, "candidateId"> | undefined {
   const needle = normalizePhoneNumber(candidateValue);
   if (needle.length < MIN_PHONE_DIGITS) return undefined;
@@ -94,7 +98,7 @@ function checkPhoneReuse(
     if (runs.some((run) => normalizePhoneNumber(run) === needle)) {
       return {
         kind: "phone-reuse",
-        source: `appears in a message the sender wrote, ${message.sentAt.toISOString().slice(0, 10)}`,
+        source: `appears in a message the sender wrote, ${localDateString(message.sentAt, timeZone)}`,
         confidence: 0.7,
       };
     }

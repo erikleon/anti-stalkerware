@@ -30,6 +30,10 @@ describe("localDateString", () => {
     expect(localDateString(evening, "America/New_York")).toBe("2026-09-23");
     expect(localDateString(evening, "UTC")).toBe("2026-09-24");
   });
+
+  it("falls back to the UTC date, marked, before 1970", () => {
+    expect(localDateString(new Date("1969-07-20T20:17:00Z"), "America/New_York")).toBe("1969-07-20 UTC");
+  });
 });
 
 describe("zonedTimestamp", () => {
