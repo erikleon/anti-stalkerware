@@ -63,7 +63,16 @@ const SALT_LENGTH = 16;
 const GCM_IV_LENGTH = 12;
 const GCM_AUTH_TAG_LENGTH = 16;
 
-/** A fixed plaintext encrypted under the vault key at creation time, purely so a later unlock attempt has something to verify a passphrase against. */
+/**
+ * A fixed plaintext encrypted under the vault key at creation time, purely
+ * so a later unlock attempt has something to verify a passphrase against.
+ *
+ * Left as "antistalker..." on purpose after the project's rename to
+ * docket — the actual string value is arbitrary and never displayed
+ * anywhere; changing it would fail the canary check against every vault
+ * already created under the old value, i.e. break unlocking for anyone
+ * with an existing vault. Not a stale rename to "fix."
+ */
 const CANARY_PLAINTEXT = Buffer.from("antistalker-vault-canary-v1", "utf8");
 
 export interface VaultMetadata {
