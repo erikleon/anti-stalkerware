@@ -50,4 +50,25 @@ describe("checkIdentifierReuse", () => {
     const signal = checkIdentifierReuse("username", "   ", "anything@example.com", []);
     expect(signal).toBeUndefined();
   });
+
+  it("matches a phone number across formats: typed with punctuation vs. the sender's E.164 identifier", () => {
+    const signal = checkIdentifierReuse("phone", "(555) 123-4567", "+15551234567", []);
+    expect(signal?.confidence).toBe(0.9);
+    expect(signal?.kind).toBe("phone-reuse");
+  });
+
+  it("finds a phone number written inside a message in a different format", () => {
+    const messages = [buildMessage({ text: "new number, text me at 555.123.4567 ok" })];
+    const signal = checkIdentifierReuse("phone", "+1 555 123 4567", "unknown-sender@example.com", messages);
+    expect(signal?.confidence).toBe(0.7);
+  });
+
+  it("does not match a phone number that only shares a short digit run", () => {
+    const messages = [buildMessage({ text: "meet at 4567 main st" })];
+    expect(checkIdentifierReuse("phone", "555-123-4567", "+15559990000", messages)).toBeUndefined();
+  });
+
+  it("refuses to match on too few digits instead of matching almost anything", () => {
+    expect(checkIdentifierReuse("phone", "555", "+15551234567", [])).toBeUndefined();
+  });
 });
