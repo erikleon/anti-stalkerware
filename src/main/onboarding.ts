@@ -13,6 +13,7 @@ import { connectImap } from "../ingest/imap/reader";
 import { sweepImapSenders } from "../ingest/imap/metadata-sweep";
 import { ImapAdapter } from "../ingest/imap/adapter";
 import { runIngest } from "../pipeline/run-ingest";
+import { expandHome } from "./paths";
 
 /**
  * The logic behind onboarding's IPC channels — one function per step, each
@@ -25,7 +26,7 @@ import { runIngest } from "../pipeline/run-ingest";
  */
 
 export async function sweepImessage(dbPath: string): Promise<MetadataSweepResult[]> {
-  const db = await openChatDbReadOnly(dbPath);
+  const db = await openChatDbReadOnly(expandHome(dbPath));
   try {
     return sweepMessageMetadata(db);
   } finally {
@@ -48,9 +49,13 @@ export async function sweepImap(connection: ImapConnectionInput): Promise<Metada
 }
 
 export async function connectImessage(vault: Vault, dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult> {
-  const config: SourceConfig = { source: "imessage", dbPath, selectedIdentifiers };
+  // Expanded once, here, and the expanded form is what gets saved — so a
+  // later syncNow() reading config.dbPath back out never needs to expand
+  // it again.
+  const resolvedDbPath = expandHome(dbPath);
+  const config: SourceConfig = { source: "imessage", dbPath: resolvedDbPath, selectedIdentifiers };
   vault.sourceConfig.save(config);
-  const adapter = new ImessageAdapter({ dbPath, selectedThreadIdentifiers: selectedIdentifiers });
+  const adapter = new ImessageAdapter({ dbPath: resolvedDbPath, selectedThreadIdentifiers: selectedIdentifiers });
   return runIngest(adapter, vault.store, undefined, undefined);
 }
 
