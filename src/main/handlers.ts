@@ -272,7 +272,7 @@ async function exportToFile(session: VaultSession, mainWindow: BrowserWindow): P
   });
   if (canceled || !filePath) return undefined;
 
-  const payload = buildExportPayload(messages);
+  const payload = buildExportPayload(messages, localTimeZone());
   await writeFile(filePath, JSON.stringify(payload, null, 2), "utf8");
   await vault.integrityLog.append({
     kind: "export",

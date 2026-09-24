@@ -62,9 +62,26 @@ describe("listAllMessages", () => {
 
 describe("buildExportPayload", () => {
   it("carries the disclosure text and every message's evidentiary fields", () => {
-    const payload = buildExportPayload([buildMessage("m1", "thread-a")]);
+    const payload = buildExportPayload([buildMessage("m1", "thread-a")], "UTC");
     expect(payload.disclosure).toContain("does not prove");
     expect(payload.messages).toHaveLength(1);
     expect(payload.messages[0]).toMatchObject({ id: "m1", threadId: "thread-a", rawRecordHash: "hash-m1" });
+  });
+
+  it("writes each message's local time with its zone next to the UTC time", () => {
+    const message = { ...buildMessage("m1", "thread-a"), sentAt: new Date("2026-09-24T01:00:00.000Z") };
+    const payload = buildExportPayload([message], "America/New_York");
+    expect(payload.timeZone).toBe("America/New_York");
+    expect(payload.messages[0]).toMatchObject({
+      sentAt: "2026-09-24T01:00:00.000Z",
+      sentAtLocal: "2026-09-23T21:00:00.000-04:00[America/New_York]",
+    });
+  });
+
+  it("leaves out the local time before 1970 instead of failing the export", () => {
+    const message = { ...buildMessage("m1", "thread-a"), sentAt: new Date("1969-12-31T00:00:00.000Z") };
+    const [exported] = buildExportPayload([message], "America/New_York").messages;
+    expect(exported?.sentAt).toBe("1969-12-31T00:00:00.000Z");
+    expect(exported?.sentAtLocal).toBeUndefined();
   });
 });
