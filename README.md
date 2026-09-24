@@ -10,6 +10,18 @@ An informational site (not the app itself — the app runs entirely on your
 own machine) is at **https://erikleon.github.io/docket/**, built
 from `docs/`.
 
+![Triage: flagged threads, each with the reason it was flagged, previews blurred](docs/screenshots/triage.png)
+
+| Onboarding marks contacts you blocked | OSINT compares a new number with them |
+| --- | --- |
+| ![Onboarding picker with a sender marked "Blocked on this Mac", selected first](docs/screenshots/onboarding-blocked.png) | ![OSINT compare result: one lead at 65% from a phone mention and writing style](docs/screenshots/osint-compare.png) |
+
+Screenshots use made-up demo data. No classifier model ships yet, so the
+newest sender was marked as over the abuse threshold by hand; that's what
+shows the High label and unlocks OSINT. `scripts/capture-screenshots.mjs`
+rebuilds them from the real app, and `scripts/render-og-card.mjs` rebuilds
+the link-preview card (`docs/og-image.png`).
+
 The full plan, including 26 reviewed design decisions and an independent
 adversarial critique, lives in `~/.claude/plans/2026-09-22-antistalker.md`.
 Deferred and completed-since-the-plan work is tracked in `TODOS.md`, and

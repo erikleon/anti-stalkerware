@@ -5,7 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>docket — triage harassment, preserve evidence, stay in control</title>
 <meta name="description" content="A free, local-first desktop tool for people being harassed by someone they know — an ex, a coparent, a relative, a coworker. Triages harassing messages, preserves evidence, and offers a tightly gated way to research a harasser. No cloud, no account, source on GitHub.">
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="canonical" href="https://erikleon.github.io/docket/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="docket">
+<meta property="og:url" content="https://erikleon.github.io/docket/">
+<meta property="og:title" content="docket — triage harassment, keep the evidence">
+<meta property="og:description" content="A free, local-first desktop tool for people harassed by someone they know — an ex, a coparent, a relative, a coworker. No cloud, no account, open source.">
+<meta property="og:image" content="https://erikleon.github.io/docket/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="docket: triage the harassment, keep the evidence. A dark app window shows flagged messages with the reasons they were flagged.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="docket — triage harassment, keep the evidence">
+<meta name="twitter:description" content="A free, local-first desktop tool for people harassed by someone they know. No cloud, no account, open source.">
+<meta name="twitter:image" content="https://erikleon.github.io/docket/og-image.png">
+<meta name="twitter:image:alt" content="docket: triage the harassment, keep the evidence. A dark app window shows flagged messages with the reasons they were flagged.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -200,6 +217,19 @@
   .resource-intro { font-size: 13px; color: var(--text-dim); margin-top: 0; }
   .emergency-note { font-size: 12px; color: var(--text-dim); }
 
+  .shots { display: grid; gap: 28px; }
+  .shots figure { margin: 0; }
+  .shots img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+  .shots figcaption { font-size: 12.5px; color: var(--text-dim); margin-top: 10px; max-width: 70ch; }
+  .shots-note { font-size: 12px; color: var(--text-dim); margin: 0 0 20px; max-width: 70ch; }
+
   .privacy-grid { display: flex; flex-direction: column; gap: 14px; }
   .privacy-item { font-size: 13.5px; }
   .privacy-item strong { display: block; margin-bottom: 3px; }
@@ -229,8 +259,9 @@
       A free, local-first desktop tool for people being harassed by someone they know — an ex, a
       coparent, a relative, a coworker. It scores incoming messages so you don't have to read all
       of it yourself, preserves what you choose to keep in a form built to survive a
-      chain-of-custody challenge, and — only when tightly gated — helps you research a harasser.
-      Nothing leaves your device except that last part, and it says so every time.
+      chain-of-custody challenge, and — only when tightly gated — helps you check whether a new
+      number or account is someone you already blocked. There's no cloud and no account: the only
+      connection it makes is to your own email provider, if you connect email.
     </p>
     <div class="cta-row">
       <a class="btn btn--primary" href="https://github.com/erikleon/docket/releases">Download</a>
@@ -240,6 +271,37 @@
     </div>
   </div>
 </header>
+
+<section id="screens">
+  <div class="wrap">
+    <h2>See it</h2>
+    <p class="shots-note">Screenshots from the real app with made-up demo data. No classifier model ships with the
+      app yet, so for these the newest sender was marked as over the abuse threshold by hand. That's what
+      turns on the High label and the OSINT check below.</p>
+    <div class="shots">
+      <figure>
+        <a href="screenshots/triage.png"><img src="screenshots/triage.png" width="1280" height="800" loading="lazy"
+          alt="Triage screen. Three threads under Needs review. The top one is labeled High, with the reason: sent after a boundary the user marked. Message previews are blurred; the open thread on the right shows three messages from a new number."></a>
+        <figcaption>Triage: every flagged thread says why it was flagged. Previews stay blurred until you choose to read them.</figcaption>
+      </figure>
+      <figure>
+        <a href="screenshots/onboarding-blocked.png"><img src="screenshots/onboarding-blocked.png" width="1280" height="800" loading="lazy"
+          alt="Onboarding sender picker. A number marked Blocked on this Mac is listed first and already selected, with an option to save blocked senders as known accounts."></a>
+        <figcaption>Onboarding: contacts you blocked are marked, listed first, and saved as known accounts.</figcaption>
+      </figure>
+      <figure>
+        <a href="screenshots/osint-compare.png"><img src="screenshots/osint-compare.png" width="1280" height="800" loading="lazy"
+          alt="OSINT screen for a new number. Comparing with known accounts shows one lead, Jordan, at 65 percent from two signals: the old blocked number appears in a message, and the writing style is similar."></a>
+        <figcaption>OSINT: a new number compared with someone you blocked, with every signal shown. It's a lead, not proof.</figcaption>
+      </figure>
+      <figure>
+        <a href="screenshots/vault.png"><img src="screenshots/vault.png" width="1280" height="800" loading="lazy"
+          alt="Vault and export screen. A searchable list of every preserved message next to the export disclosure, which says what the capture hash proves and what it does not."></a>
+        <figcaption>Vault: everything you kept, searchable, with a plain statement of what an export does and doesn't prove.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
 
 <section>
   <div class="wrap">
@@ -270,9 +332,10 @@
       <div class="n">03</div>
       <h3>OSINT, gated — and verify-mode, not search-mode</h3>
       <p>Only unlocks for someone already flagged as abusive in your own vault. Even then, it can't
-        look anyone up from scratch: you name a candidate you already suspect, and it checks whether
-        that one hypothesis is supported by messages already in your vault — a reused username, a
-        matching email, a similar writing style. Every result is labeled an unverified lead, never a
+        look anyone up from scratch. It compares a new number or account with the people you already
+        blocked — imported from your Mac's block list or an Instagram export — or with one candidate you
+        name, using only messages already in your vault: a reused number or username, a matching email,
+        a similar writing style. Every result is labeled an unverified lead, never a
         confirmed identity, and every check runs on your device with no network call at all. This
         gate is friction against casual misuse, not proof of who someone is.</p>
     </div>
