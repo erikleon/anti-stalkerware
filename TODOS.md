@@ -403,3 +403,70 @@ Whoever picks this up should treat that as a small design pass, not an
 implementation detail.
 
 Deferred 2026-09-24 (`/plan-eng-review`), same reasoning as item 15.
+
+## 17. Manual encrypted vault-to-vault transfer (multi-device use)
+
+D1 (this same review) framed "multiple devices" as a binary — cross-
+platform (built) vs. full live vault sync (rejected, conflicts with
+no-cloud/no-account) — and an outside-voice review (Codex) correctly
+called that framing too narrow: a manual, user-initiated, encrypted
+export/import between someone's own devices needs no network and no
+third party ever touches it, so it doesn't compromise local-first at
+all. Scoped here, not built.
+
+**What already exists and isn't reusable as-is:** `src/vault/export.ts`
+sounds like the same thing but isn't — it's an unencrypted, human-
+readable JSON export for handing to a lawyer or police, missing raw
+records/edit history/retraction data, never meant to be read back into
+a vault. This needs a genuinely separate mechanism.
+
+**Scope of what transfers** (a vault is five stores, see `vault.ts`):
+`store` (messages, raw records, quarantine), `userContext` (boundaries/
+tagged phrases), `integrityLog`, and `triageState` (hide/reviewed
+flags) all transfer — together they're what makes device B's copy
+actually usable and consistent with device A's. `sourceConfig` and
+`credentials` do NOT transfer: `sourceConfig` holds device-A-specific
+paths (`~/Library/Messages/chat.db` means nothing on a different OS or
+even a different macOS user account) and `credentials` holds a live
+IMAP app password that a portable file doesn't need to carry — device B
+reconnects its own sources through the normal onboarding flow.
+
+**Transfer file encryption:** a separate, one-time transfer passphrase
+set at export and entered at import — not the vault's own passphrase.
+A portable file (USB stick, briefly in a Downloads folder) is more
+exposed than the vault's own on-disk file, which never leaves the
+device; reusing the real passphrase would make the transfer file a
+second copy of the master key. Reuses the existing `ScryptGcmVaultCrypto`
+(crypto.ts) keyed by the transfer passphrase instead of a new algorithm,
+and the existing create/unlock passphrase UI pattern instead of new UX.
+
+**Architecture: model import as an ingest adapter, not a bespoke merge.**
+`store.append()` already dedupes by raw-record hash (tested:
+"re-appending the same raw record hash is a no-op, not an overwrite or
+an error") — the exact idempotency a device-to-device transfer needs
+(importing the same file twice, or two devices that both grew
+independently and get cross-imported, should both be safe). A new
+`src/ingest/vault-transfer/` adapter (adapter.ts + metadata-sweep.ts +
+reader.ts, same three-file shape as android-sms/imap) that decrypts the
+transfer file and runs through the existing `runIngest`/`append()`
+pipeline gets this for free, rather than writing new merge logic from
+scratch.
+
+**Export UX: no sender/thread picker**, unlike onboarding's external-
+source picker. That picker exists to let someone vet a stranger's data
+(an export from IMAP or Android SMS) before any of it enters the vault;
+here the source is the user's own already-vetted vault, so gating it
+behind a picker would just be friction with no corresponding safety
+benefit. Export is all-or-nothing.
+
+**Left open, real design questions for whoever builds this:**
+- Where this lives in the UI — Settings, next to source management and
+  "Lock now," is the natural fit, but not decided.
+- Whether merging two independently-grown `integrityLog`s needs special
+  handling for hash-chain continuity, or whether each device's log can
+  just stay logically separate per-origin. Not analyzed here.
+- File extension / format naming (something like `.atsxfer`) — cosmetic,
+  not decided.
+
+Deferred 2026-09-24 (`/plan-eng-review`, extended after outside-voice
+review reopened D1's scope narrowing).
