@@ -82,10 +82,28 @@ declare global {
     eligible: boolean;
   }
 
+  type OsintSignalKind = "username-reuse" | "email-reuse" | "phone-reuse" | "profile-photo-match" | "writing-style-match";
+
+  interface OsintSignal {
+    kind: OsintSignalKind;
+    candidateId: string;
+    source: string;
+    confidence: number;
+  }
+
   interface RankedLead {
     candidateId: string;
     score: number;
     supportingSignalCount: number;
+    signals: OsintSignal[];
+  }
+
+  interface CandidateInput {
+    label: string;
+    username?: string;
+    email?: string;
+    phone?: string;
+    writingSample?: string;
   }
 
   interface DestroyResult {
@@ -145,7 +163,7 @@ declare global {
     };
     osint: {
       eligibleSenders(): Promise<OsintSenderEligibility[]>;
-      rank(sender: string): Promise<RankedLead[]>;
+      checkCandidate(sender: string, candidate: CandidateInput): Promise<RankedLead>;
     };
     vaultExport: {
       listAll(): Promise<WireMessage[]>;

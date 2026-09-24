@@ -7,11 +7,14 @@ import { listTriageRows, matchesBucket, countByBucket, type Bucket, type TriageR
 import { buildExportPayload, listAllMessages, EXPORT_DISCLOSURE_TEXT } from "../vault/export";
 import { listEligibility } from "../osint/eligibility";
 import { rankCandidates } from "../osint/rank";
+import { buildCandidate } from "../osint/verify";
+import type { VaultStore } from "../vault/store";
 import { DESTROY_CONFIRMATION_PHRASE, DESTROY_DISCLOSURE_TEXT, confirmationMatches, destroyVault } from "../vault/destroy";
 import type { Message, SourceKind } from "../types/message";
 import type { MetadataSweepResult } from "../ingest/adapter";
 import * as onboarding from "./onboarding";
 import type {
+  CandidateInput,
   DestroyResult,
   ExportHistoryEntry,
   ExportResult,
@@ -38,6 +41,14 @@ function requireVault(session: VaultSession) {
   const vault = session.current();
   if (!vault) throw new Error("no vault is unlocked");
   return vault;
+}
+
+/** Every message from every thread a given sender appears in — usually one thread, but never assumed to be exactly one. Exported for osint-verify-integration.test.ts, which exercises this against a real SqliteVaultStore rather than a fake. */
+export async function messagesFromSender(store: VaultStore, sender: string) {
+  const threads = await store.listThreads();
+  const matching = threads.filter((t) => t.sender === sender);
+  const all = await Promise.all(matching.map((t) => store.list(t.threadId)));
+  return all.flat();
 }
 
 /**
@@ -102,11 +113,19 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
 
   bind<[], OsintSenderEligibility[]>(session, "osint:eligibleSenders", async () => listEligibility(requireVault(session).store));
   // The only OSINT-reaching channel, so the only one that goes through
-  // registerGated. Always returns [] today — no live signal-gathering
-  // collector exists yet (deliberately deferred; see the plan). The gate
-  // itself is real: this still refuses a sender who hasn't crossed the
-  // abuse threshold in the vault.
-  bindGated<[string], RankedLead[]>("osint:rank", (sender) => sender, session, async () => rankCandidates([]));
+  // registerGated. Verify-mode only (see DESIGN.md's OSINT collector
+  // decision): checks the one candidate hypothesis the user just supplied
+  // against this sender's own vault-held messages, never against any
+  // external source and never able to discover a candidate from a bare
+  // identifier alone. The gate is real: this still refuses a sender who
+  // hasn't crossed the abuse threshold in the vault.
+  bindGated<[string, CandidateInput], RankedLead>("osint:checkCandidate", (sender) => sender, session, async (sender, candidateInput) => {
+    const store = requireVault(session).store;
+    const senderMessages = await messagesFromSender(store, sender);
+    const candidate = buildCandidate(candidateInput, sender, senderMessages);
+    const [ranked] = rankCandidates([candidate]);
+    return ranked!;
+  });
 
   bind<[], Message[]>(session, "vaultExport:listAll", async () => listAllMessages(requireVault(session).store));
   bind<[], string>(session, "vaultExport:disclosureText", async () => EXPORT_DISCLOSURE_TEXT);

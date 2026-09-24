@@ -32,7 +32,7 @@ const api: DocketApi = {
   },
   osint: {
     eligibleSenders: () => ipcRenderer.invoke("osint:eligibleSenders"),
-    rank: (sender) => ipcRenderer.invoke("osint:rank", sender),
+    checkCandidate: (sender, candidate) => ipcRenderer.invoke("osint:checkCandidate", sender, candidate),
   },
   vaultExport: {
     listAll: () => ipcRenderer.invoke("vaultExport:listAll"),

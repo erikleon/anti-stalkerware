@@ -12,8 +12,10 @@ import type { Bucket, TriageRow } from "../triage/view";
 import type { Message, SourceKind } from "../types/message";
 import type { MetadataSweepResult } from "../ingest/adapter";
 import type { StoredBoundary, StoredTaggedPhrase } from "../vault/user-context";
+import type { CandidateInput } from "../osint/candidate-input";
+import type { OsintSignal } from "../osint/graph";
 
-export type { Bucket, TriageRow, StoredBoundary, StoredTaggedPhrase };
+export type { Bucket, TriageRow, StoredBoundary, StoredTaggedPhrase, CandidateInput, OsintSignal };
 
 export interface UnlockResult {
   /** Never distinguishes "wrong passphrase" from "corrupted vault" — see crypto.ts. */
@@ -47,6 +49,8 @@ export interface RankedLead {
   candidateId: string;
   score: number;
   supportingSignalCount: number;
+  /** Never a bare verdict — the actual signals behind the score, so a result always shows its own reasoning. */
+  signals: OsintSignal[];
 }
 
 export interface DestroyResult {
@@ -102,7 +106,8 @@ export interface DocketApi {
   };
   osint: {
     eligibleSenders(): Promise<OsintSenderEligibility[]>;
-    rank(sender: string): Promise<RankedLead[]>;
+    /** Verify-mode only: checks one candidate the user already named against vault-held signals for this sender. Cannot discover who someone is from a bare identifier — see DESIGN.md's OSINT collector decision. */
+    checkCandidate(sender: string, candidate: CandidateInput): Promise<RankedLead>;
   };
   vaultExport: {
     listAll(): Promise<Message[]>;
