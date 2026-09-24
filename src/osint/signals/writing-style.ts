@@ -70,15 +70,20 @@ function toVector(f: StyleFeatures): number[] {
 }
 
 /**
- * Compares a pasted writing sample against everything the sender actually
- * wrote in this vault (never text the app fetched itself — the user pastes
- * the candidate's sample in directly). A coarse, explainable heuristic —
+ * Compares a writing sample against everything the sender actually wrote
+ * in this vault (never text the app fetched itself — the sample is either
+ * pasted in by the user, or messages a known account already has in the
+ * vault; `sampleDescription` says which in the result). A coarse, explainable heuristic —
  * sentence length, word length, and function-word frequency — not
  * forensic-grade stylometry, and it says so in what it returns rather than
  * implying more rigor than four features and a cosine similarity actually
  * have.
  */
-export function checkWritingStyle(writingSample: string, senderMessages: readonly Message[]): Omit<OsintSignal, "candidateId"> | undefined {
+export function checkWritingStyle(
+  writingSample: string,
+  senderMessages: readonly Message[],
+  sampleDescription = "supplied",
+): Omit<OsintSignal, "candidateId"> | undefined {
   const senderText = senderMessages
     .filter((m) => !m.fromSelf)
     .map((m) => m.text)
@@ -93,7 +98,7 @@ export function checkWritingStyle(writingSample: string, senderMessages: readonl
 
   return {
     kind: "writing-style-match",
-    source: `coarse stylometric comparison — ${senderFeatures.wordCount} words from the sender vs ${candidateFeatures.wordCount} words supplied; not forensic-grade`,
+    source: `coarse stylometric comparison — ${senderFeatures.wordCount} words from the sender vs ${candidateFeatures.wordCount} words ${sampleDescription}; not forensic-grade`,
     confidence,
   };
 }
