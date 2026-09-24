@@ -99,13 +99,21 @@
   flex-shrink: 0;
   box-sizing: border-box;
   border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.message-list-rows {
+  flex: 1;
   overflow-y: auto;
 }
 
 .message-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
   width: 100%;
   box-sizing: border-box;
   padding: 12px 16px;
@@ -130,7 +138,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   text-align: left;
   background: transparent;
   border: none;
@@ -146,6 +155,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0; /* see .message-row-sender's comment */
+  width: 100%;
 }
 
 .message-row-sender {
@@ -154,6 +165,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Without min-width:0, a flex child with nowrap text defaults to a
+     content-based minimum size and never actually shrinks to fit — the
+     same family of bug as .list-block's height collapse (see its
+     comment), just on the other axis: overflow:hidden clips rendering,
+     but the box itself still grows past its flex container, pushing a
+     horizontal scrollbar onto the whole row list instead of ellipsizing
+     in place. flex:1 (not width:100%) because .message-row-time is a
+     sibling in this row that also needs room. */
+  min-width: 0;
+  flex: 1;
 }
 
 .message-row-time {
@@ -168,6 +189,64 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0; /* see .message-row-sender's comment */
+  width: 100%;
+}
+
+.message-row-preview.is-blurred {
+  filter: blur(5px);
+  user-select: none;
+}
+
+.message-list-header {
+  padding: 18px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.message-list-header h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.message-list-header label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.message-row-select {
+  min-width: 24px;
+  min-height: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.batch-bar {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.batch-bar.is-hidden {
+  transform: translateY(12px);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .message-row-signal {
@@ -176,6 +255,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0; /* see .message-row-sender's comment */
+  width: 100%;
 }
 
 .message-row-actions {
@@ -247,6 +328,15 @@
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.provenance-pill {
+  font-size: 10.5px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 2px 8px;
+  border-radius: 2px;
 }
 
 /* Generic single/two-pane content screens: settings, destroy, support, vault/export, osint */
