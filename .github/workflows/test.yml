@@ -14,6 +14,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Also callable from release.yml, so a tagged commit only gets an
+  # installer published if this exact commit passes on all three OSes —
+  # not just whatever main's last push happened to look like.
+  workflow_call:
 
 jobs:
   test:

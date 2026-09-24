@@ -307,7 +307,46 @@ Left open: mac/Windows/Linux binaries in CI build for whatever
 architecture each GitHub-hosted runner uses (currently arm64 for
 macos-latest) — same single-arch caveat item 13 already logged.
 
-## 15. Instagram DM export adapter
+**Addendum, same day:** ran an outside-voice review (`codex`) against
+this change before calling it done. Real findings, all fixed:
+
+- The Support screen awaited the hotkey-status IPC call before building
+  any DOM at all — a rejected or slow call would have meant the crisis
+  hotline numbers, the most safety-critical content on that screen,
+  never rendered. Fixed: static content mounts immediately, the status
+  line is patched in once the call resolves (or silently dropped if it
+  doesn't).
+- The first real run of the new CI matrix (not a hypothetical — this
+  actually happened) failed on windows-latest with `EBUSY` unlinking
+  `vault.db` during test teardown. Root cause: `sqlite-store.test.ts`
+  opened two ad-hoc inline `new Database(dbPath, { readonly: true })`
+  handles to inspect table contents directly and never closed them —
+  invisible on macOS/Linux, where deleting a file with an open handle is
+  allowed, fatal on Windows, where it isn't. Fixed both, plus added a
+  shared `removeTestDir()` helper (`test/helpers/tmp-dir.ts`, used by
+  all 19 test files with this teardown shape) with a modest retry budget
+  as defense-in-depth for the separate, genuinely transient case
+  (antivirus scanning a just-written file, the most commonly reported
+  cause of this exact flake on GitHub-hosted Windows runners).
+- `release.yml` published installers on any tag without checking whether
+  that commit's tests actually passed anywhere. Fixed: `test.yml` is now
+  also `workflow_call`-triggered, and `release.yml`'s build job `needs`
+  it — a tag only produces a release once the full cross-platform suite
+  is green on that exact commit.
+- Two documentation-accuracy issues caught in the same pass: the test
+  plan claimed `~\...` (Windows-style) path expansion was unit-tested
+  when it wasn't yet (fixed by adding the test), and a CI comment
+  implied iMessage's tests were OS-conditional when they're actually
+  pure, OS-agnostic byte-parsing tests that run identically everywhere
+  (comment corrected, not the tests — they were never wrong).
+
+Also surfaced, not acted on: whether `CommandOrControl+Shift+Escape` — a
+combo that happens to also be Windows' own reserved Task Manager
+shortcut — actually registers cleanly via Electron's `globalShortcut` on
+a real Windows desktop is still unverified; the Windows CI leg never
+reached the e2e job that would exercise it until the `EBUSY` fix above
+landed. Worth a specific look at the next green Windows run rather than
+assumed fine by default.
 
 A new `src/ingest/instagram/` adapter (mirroring android-sms's shape:
 adapter.ts + metadata-sweep.ts + reader.ts) parsing the JSON export from

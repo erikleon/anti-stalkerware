@@ -4,6 +4,10 @@ name: Release
 # the pushed tag. Unsigned (see README's "Installing a packaged release" —
 # no Apple/Windows signing certificate is wired up), so macOS shows a
 # Gatekeeper warning and Windows shows a SmartScreen warning on first run.
+#
+# Gated on test.yml passing for this exact tagged commit first (via
+# workflow_call) — a real regression on a release tag should block the
+# release, not just get noticed after someone already downloaded it.
 
 on:
   push:
@@ -14,7 +18,11 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   release:
+    needs: test
     strategy:
       fail-fast: false
       matrix:
