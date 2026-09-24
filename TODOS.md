@@ -203,7 +203,7 @@ failure toast. Verified via `test/e2e/onboarding-error-handling.spec.ts`
 `renderer/` into `test/unit/` pulls it into `tsconfig.eslint.json`'s
 program, which has no DOM lib.
 
-## 12. Some full-width buttons look heavier than intended
+## 12. ~~Some full-width buttons look heavier than intended~~ DONE 2026-09-24
 
 "Lock now" (Settings), "Add boundary" / "Add tagged phrase" (Boundaries
 screen) stretch to the full width of their container because they're
@@ -213,6 +213,14 @@ to file…" CTA, which is intentionally full-width, but these read as
 heavier than a secondary action probably should. Purely cosmetic, found
 during the same /qa pass; not fixed here since it's a judgment call
 about which buttons should read as primary vs. secondary, not a bug.
+
+Fixed with a `.btn--inline` modifier (`align-self: flex-start`) on "Lock
+now", "Add boundary", and "Add tagged phrase", also used by the new OSINT
+buttons. A screenshot then showed "Lock now" with its bottom edge
+clipped: the Settings pane scrolls, and flex shrinks items once the
+content is taller than the window — the same mechanism as the
+`.list-block` note in `app.css`. `.btn--inline` also sets
+`flex-shrink: 0`.
 
 ## 13. ~~Packaged releases~~ DONE 2026-09-23
 
@@ -361,6 +369,8 @@ Not independently verified that `Control+Shift+Alt+H` itself is
 collision-free on every real Windows machine — only that it isn't one
 of the well-known OS-reserved combos, which is what actually broke.
 
+## 15. ~~Instagram DM export adapter~~ DONE 2026-09-24
+
 A new `src/ingest/instagram/` adapter (mirroring android-sms's shape:
 adapter.ts + metadata-sweep.ts + reader.ts) parsing the JSON export from
 Instagram's "Download Your Information" tool
@@ -382,6 +392,37 @@ built — "social media, payment apps, email, and others" as one plan was
 3-4 new adapters at once, which is exactly the complexity this kind of
 review is supposed to catch before it starts. No dependency on any other
 open item.
+
+**Built later the same day**, as one adapter on its own rather than
+bundled with 16/17: `reader.ts` + `metadata-sweep.ts` + `adapter.ts`,
+plus `blocked.ts` for the export's own block list (feeds item 19).
+Reads `inbox/` and `message_requests/` (harassers who aren't followed
+land in requests), both the current `your_instagram_activity/messages/`
+layout and the older `messages/` one. Details that needed real handling:
+
+- Meta writes every string as UTF-8 bytes escaped one byte per
+  character; `decodeMetaString` undoes it, and leaves a string alone if
+  it can't be that.
+- Senders are display names, not usernames. The one-to-one thread
+  folder name is kept as an alias, so an Instagram block list username
+  can still match the sender in onboarding.
+- The owner comes from `personal_information.json`; without it, from the
+  one name common to every thread (two threads minimum). With neither,
+  the scan fails with a message that says what to include in the
+  export, rather than guessing and attributing the user's own messages
+  to someone else.
+- A media-only message and a thread file that isn't valid JSON are
+  quarantined with a reason, not skipped. An HTML-format export gets its
+  own error message that says to request JSON.
+- Message ids come from the raw record's hash, so re-importing the same
+  (or a newer) export adds nothing twice.
+- Only selected senders' messages plus the owner's replies in those
+  threads are imported — never other people in a group thread.
+
+The onboarding copy says plainly that unsent and deleted messages are
+not in the export. Verified by 16 unit tests (`test/unit/instagram/`),
+an orchestration test against a real vault (`onboarding.test.ts`), and
+`test/e2e/instagram-onboarding.spec.ts`.
 
 ## 16. Payment-app (Venmo/PayPal/Cash App) transaction-note adapter
 
@@ -550,3 +591,57 @@ several jurisdictions (Illinois BIPA, the EU AI Act's biometric rules,
 multiple city-level bans) — the single most doxxing-coded capability on
 the list, and not something that should ride along on the back of the
 four safe, local-only ones that just shipped.
+
+## 19. ~~Known accounts: blocked contacts as the OSINT baseline~~ DONE 2026-09-24
+
+The person harassing someone is usually already known and already
+blocked; what the user doesn't know is whether a new number or account
+is the same person again. Verify-mode (item 18) needed the user to type
+a candidate in by hand every time. This gives OSINT a standing list to
+compare against instead.
+
+- `src/vault/known-accounts.ts` — a vault table of accounts (phone,
+  email, or username) with a person label and an origin (manual, macOS
+  block list, Instagram block list). Unique per normalized value, so the
+  same number typed three ways is one row; a re-import never overwrites
+  a label the user set.
+- `src/ingest/blocklist/macos-blocklist.ts` — reads
+  `~/Library/Preferences/com.apple.cmfsyncagent.plist`, the Messages/
+  FaceTime block list (iCloud-synced, so usually the iPhone's too).
+  Read-only. Entries that are neither a phone number nor an email are
+  counted and reported, not dropped. Checked against the real file on
+  the development Mac (entry counts only, no values printed).
+  `DOCKET_MACOS_BLOCKLIST_PATH` points e2e tests at a fixture.
+- Onboarding marks every scanned sender that is on the Mac block list,
+  the Instagram export's block list, or already a known account; lists
+  them first; pre-selects them; and offers to save the selected blocked
+  senders as known accounts (on by default, one checkbox). A block list
+  that can't be read never stops an import — the reason is shown.
+- `src/osint/known-accounts.ts` + gated `osint:compareKnownAccounts` —
+  one lead per person: identifier reuse for each of their accounts, and
+  writing style against that person's own vault messages (their history
+  from before the block), never the sender's own messages.
+- Phone numbers now match across formats in every identifier check
+  ("(555) 123-4567" vs "+15551234567"), with a 7-digit minimum so a
+  street number can't match.
+
+Import is one person per block-list entry, on purpose: a block list is
+mostly spam, and merging entries into people is a judgment only the user
+can make (by giving accounts the same person name).
+
+Left open: the compare tool is still behind the abuse-threshold gate,
+same as item 18. A blocked person writing from a new number often opens
+with something that isn't toxic ("hey, it's me"), so the gate can keep
+the one sender the user most wants compared locked until a later
+message crosses the threshold. Loosening the gate for senders who match
+a known account's writing or identifiers is a real option, but it's a
+change to D22 and should be its own decision.
+
+Verified: 12 known-accounts store tests, 7 block-list reader tests, 9 onboarding
+annotation tests, 5 comparison tests, 4 new phone-matching tests, plus
+`test/e2e/known-accounts.spec.ts` (onboarding path macOS-only; the
+add/relabel/remove path on every OS). The compare flow was checked by
+hand against a built app with the abuse flag set directly in a scratch
+vault (no classifier model in this environment): the new number scored
+65% for the blocked person, from a phone mention (70%) and writing style
+(60%).

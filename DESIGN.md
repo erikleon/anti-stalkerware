@@ -198,6 +198,29 @@ ever built, and is treated as its own future decision, not bundled here.
 Explicit copy states results can't enter an evidence export — matches the
 structural code-level barrier, not just a UI suggestion.
 
+**Known accounts (added 2026-09-24 — see TODOS.md item 19):** the most
+common pattern this app sees is not a stranger. It is someone the user
+already blocked who comes back from a new number or a new account. So
+the locked OSINT screen also holds a known-accounts list: numbers,
+emails, and usernames the user knows belong to someone harassing them,
+each tagged with a person name. Accounts with the same person name are
+compared as one person. The list comes only from the user: typed in, or
+imported from their own block lists (this Mac's Messages block list, or
+the block list inside an Instagram export). Onboarding marks blocked
+senders with a "Blocked on this Mac" / "Blocked on Instagram" badge,
+lists them first, and pre-selects them, because their messages from
+before the block are the writing baseline.
+
+The unlocked screen then has two tools, in this order: "Compare with
+your known accounts" (one button, one lead per person, only leads with a
+supporting signal are listed, with a count of the rest), then the older
+"Check someone you suspect" form. Compare stays inside verify-mode: the
+set of people is the user's own list, and each comparison is identifier
+reuse plus writing style against that person's own messages already in
+the vault. Block-list entries are imported one person per entry, never
+merged automatically — a block list mixes spam numbers with real people,
+and only the user knows which entries are the same person.
+
 ## Settings
 
 Sources list (connection status per ingest adapter), the D10

@@ -18,7 +18,7 @@ the coerced-unlock stance) live in `DESIGN.md`.
 
 ## Status
 
-Ingest (iMessage, Android SMS export, IMAP), the encrypted vault, and the
+Ingest (iMessage, Android SMS export, IMAP, Instagram export), the encrypted vault, and the
 SCORE module (ONNX classifier + structural signal detectors) are built and
 tested. The Electron app runs a real flow end to end:
 
@@ -48,6 +48,16 @@ tested. The Electron app runs a real flow end to end:
   locally, no network call. `profile-photo-match` (facial recognition or
   image search) is the one signal type this doesn't cover, and is left
   as a separate, unbuilt decision — see TODOS.md.
+- **Known accounts** — the accounts you know belong to someone
+  harassing you, usually ones you blocked. Import them from this Mac's
+  Messages block list or an Instagram export's block list, or type them
+  in. Onboarding marks blocked senders and selects them first. OSINT
+  compares a flagged sender with each person on the list: shared
+  numbers, emails, or usernames, and writing style against what that
+  person sent before you blocked them.
+- **Instagram** — imports the JSON export from Instagram's "Download
+  your information" (DMs and message requests). Unsent and deleted
+  messages are not in that export.
 - **No coerced-unlock / duress-passphrase mechanism**, deliberately — see
   DESIGN.md's "Coerced unlock" section for why a decoy vault or a duress
   wipe were both considered and turned down, and what the actual mitigation
@@ -121,11 +131,13 @@ src/
   main/     Electron main process, IPC registration (OSINT handlers must
             register through registerGated, never registerHandler directly),
             vault session lifecycle, settings storage
-  ingest/   Per-source adapters (imessage, android-sms, imap) + quarantine
+  ingest/   Per-source adapters (imessage, android-sms, imap, instagram),
+            the macOS block list reader (blocklist/), and quarantine
   vault/    Append-only store, encryption, credentials, integrity, destroy,
             export, plus the separate (mutable, non-evidentiary) stores:
             triage view-state, onboarding source config, and user-authored
-            boundaries/tagged phrases for the structural detectors
+            boundaries/tagged phrases for the structural detectors, and
+            known accounts (the OSINT comparison baseline)
   score/    Local toxicity classifier, structural signal detection, summarizer
   triage/   Composes vault threads + view-state + fired signals into
             bucketed, banded rows for the UI
