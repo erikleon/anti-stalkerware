@@ -128,6 +128,9 @@ declare global {
       isUnlocked(): Promise<boolean>;
       onLocked(callback: () => void): () => void;
     };
+    support: {
+      hotkeyStatus(): Promise<boolean>;
+    };
     triage: {
       listRows(bucket: Bucket): Promise<TriageRow[]>;
       counts(): Promise<Record<Bucket, number>>;

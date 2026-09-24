@@ -62,7 +62,7 @@ function render(): void {
   }
 
   if (state.kind === "support-standalone") {
-    renderSupportScreen(root!, {
+    void renderSupportScreen(root!, {
       onBack: () => {
         void boot();
       },
@@ -89,7 +89,7 @@ function render(): void {
       void renderOsintScreen(screenContainer);
       break;
     case "support":
-      renderSupportScreen(screenContainer);
+      void renderSupportScreen(screenContainer);
       break;
     case "settings":
       void renderSettingsScreen(

@@ -20,6 +20,9 @@ const api: AntistalkerApi = {
       return () => ipcRenderer.removeListener("vault:locked", listener);
     },
   },
+  support: {
+    hotkeyStatus: () => ipcRenderer.invoke("support:hotkeyStatus"),
+  },
   triage: {
     listRows: (bucket) => ipcRenderer.invoke("triage:listRows", bucket),
     counts: () => ipcRenderer.invoke("triage:counts"),

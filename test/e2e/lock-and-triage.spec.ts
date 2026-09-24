@@ -92,6 +92,13 @@ test.describe("first run: create a vault and reach triage", () => {
     await expect(window.getByText("If someone is forcing you to unlock this")).toBeVisible();
     await expect(window.getByText(/no hidden second passphrase/i)).toBeVisible();
 
+    // The panic-hide hotkey's registration status (TODOS item 14) — real
+    // registration against a real OS, not a fake. Asserts the status line
+    // renders at all (catches the wiring breaking) and, since a normal
+    // test-runner desktop session can register a global shortcut, that it
+    // actually succeeded here.
+    await expect(window.getByText("That hotkey is active on this device.")).toBeVisible();
+
     await app.close();
   });
 });

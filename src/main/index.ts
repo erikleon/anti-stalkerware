@@ -67,12 +67,25 @@ function registerAutoLock(session: VaultSession, settings: SettingsStore, window
   }, AUTO_LOCK_CHECK_INTERVAL_MS);
 }
 
-function registerPanicHotkey(window: BrowserWindow): void {
-  // Hides the window instantly on demand. This must never leave a preview
-  // behind in the dock, the window switcher, or a thumbnail — that's a
-  // packaging/platform concern to verify in the Playwright e2e suite, not
-  // something this handler alone can guarantee.
-  globalShortcut.register(PANIC_HOTKEY, () => {
+/**
+ * Hides the window instantly on demand. This must never leave a preview
+ * behind in the dock, the window switcher, or a thumbnail — that's a
+ * packaging/platform concern to verify in the Playwright e2e suite, not
+ * something this handler alone can guarantee.
+ *
+ * globalShortcut.register's own return value says whether the OS actually
+ * granted the shortcut — false on Linux desktops that don't support
+ * global shortcuts at all (notably some Wayland compositors) or if
+ * another app already owns this key combo on any platform. Silently
+ * discarding that would mean the one mechanism DESIGN.md calls "the
+ * actual first line of defense" could just not work, with nothing
+ * telling the person relying on it. The caller surfaces this through
+ * support:hotkeyStatus so the Support screen — which already explains
+ * this hotkey — can say so plainly, instead of a toast that could be
+ * seen over someone's shoulder.
+ */
+function registerPanicHotkey(window: BrowserWindow): boolean {
+  return globalShortcut.register(PANIC_HOTKEY, () => {
     window.hide();
   });
 }
@@ -84,8 +97,8 @@ app.whenReady().then(() => {
   const settings = new SettingsStore(settingsPath);
 
   mainWindow = createWindow();
-  registerHandlers(session, settings, mainWindow);
-  registerPanicHotkey(mainWindow);
+  const hotkeyRegistered = registerPanicHotkey(mainWindow);
+  registerHandlers(session, settings, mainWindow, hotkeyRegistered);
   registerAutoLock(session, settings, mainWindow);
 
   app.on("before-quit", () => session.lock());

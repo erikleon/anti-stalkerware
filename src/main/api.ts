@@ -83,6 +83,10 @@ export interface AntistalkerApi {
     /** Fires when the main process auto-locks the vault after inactivity — the one push (not request/response) channel in this API, since the renderer can't poll for something main decides on its own timer. Returns an unsubscribe function. */
     onLocked(callback: () => void): () => void;
   };
+  support: {
+    /** Whether the panic-hide hotkey actually got registered with the OS at launch — see main/index.ts's registerPanicHotkey. Not vault-gated. */
+    hotkeyStatus(): Promise<boolean>;
+  };
   triage: {
     listRows(bucket: Bucket): Promise<TriageRow[]>;
     counts(): Promise<Record<Bucket, number>>;

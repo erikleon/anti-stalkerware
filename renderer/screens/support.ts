@@ -6,7 +6,8 @@ import { el, mount } from "../dom.js";
  * memory. Rendered both from the lock screen (no `back` callback needed
  * there beyond a plain back link) and from inside the unlocked app nav.
  */
-export function renderSupportScreen(container: Element, options: { onBack?: () => void } = {}): void {
+export async function renderSupportScreen(container: Element, options: { onBack?: () => void } = {}): Promise<void> {
+  const hotkeyActive = await window.antistalker.support.hotkeyStatus();
   const pane = el("div", { class: "content-pane" });
 
   if (options.onBack) {
@@ -63,6 +64,11 @@ export function renderSupportScreen(container: Element, options: { onBack?: () =
     ]),
     el("p", {}, [
       "Your safety comes first. If you're physically forced to unlock a device, it's reasonable to comply. The best defense is not being caught with it open in the first place — press Ctrl+Shift+Esc (⌘+Shift+Esc on a Mac) any time to hide the window instantly, before anyone can demand you unlock it at all.",
+    ]),
+    el("p", { style: `font-size:12px;color:${hotkeyActive ? "var(--text-dim)" : "var(--high-fg)"};` }, [
+      hotkeyActive
+        ? "That hotkey is active on this device."
+        : "That hotkey could not be set up on this device (something else may already use it, or your OS doesn't support it) — don't rely on it here. The rest of the app still works normally.",
     ]),
   );
 
