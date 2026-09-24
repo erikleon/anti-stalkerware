@@ -6,12 +6,13 @@ const SOURCE_LABEL: Record<SourceKind, string> = {
   imessage: "iMessage",
   "android-sms": "Android SMS export",
   imap: "Email (IMAP)",
+  instagram: "Instagram export",
 };
 
 /**
  * Connect a source, then choose who to actually import — DESIGN.md's D7
  * "before you continue" screen, generalized from thread selection to
- * cover all three sources. Nothing is added to the vault until the user
+ * cover every source. Nothing is added to the vault until the user
  * confirms a selection on the "select" step; the scan itself never writes
  * to the vault (see the metadata-sweep modules this calls through IPC).
  */
@@ -20,17 +21,19 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
   let error: string | undefined;
   let sweepResults: SweepRow[] = [];
   let blocklist: BlocklistSummary | undefined;
+  let instagramBlocked: { count: number; skipped: number } | undefined;
   const selected = new Set<string>();
   let syncResult: SyncResult | undefined;
   // Blocked senders the user selects are also saved as known accounts,
   // unless they untick this — the baseline OSINT compares new senders to.
   let saveBlockedAsKnown = true;
-  let savedKnown: { added: number; alreadyKnown: number } | undefined;
+  let savedKnown = { added: 0, alreadyKnown: 0 };
   let saveKnownError: string | undefined;
 
   // Form fields, only the ones relevant to `source` are ever read.
   let dbPath = source === "imessage" ? "~/Library/Messages/chat.db" : "";
   let exportFilePath = "";
+  let instagramDir = "";
   let imapHost = "";
   let imapPort = 993;
   let imapSecure = true;
@@ -45,6 +48,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
   function requiredFieldsFilled(): boolean {
     if (source === "imessage") return dbPath.trim().length > 0;
     if (source === "android-sms") return exportFilePath.trim().length > 0;
+    if (source === "instagram") return instagramDir.trim().length > 0;
     return imapHost.trim().length > 0 && imapUser.trim().length > 0 && imapAppPassword.trim().length > 0;
   }
 
@@ -56,6 +60,8 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         response = await window.docket.onboarding.sweepImessage(dbPath);
       } else if (source === "android-sms") {
         response = await window.docket.onboarding.sweepAndroidSms(exportFilePath);
+      } else if (source === "instagram") {
+        response = await window.docket.onboarding.sweepInstagram(instagramDir);
       } else {
         response = await window.docket.onboarding.sweepImap({
           host: imapHost,
@@ -67,6 +73,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         });
       }
       blocklist = response.blocklist;
+      instagramBlocked = response.instagramBlocked;
       // Blocked and already-known senders first, then by volume. They start
       // selected: their messages from before the block are what lets docket
       // recognize the same person writing from a new number later.
@@ -91,6 +98,8 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         syncResult = await window.docket.onboarding.connectImessage(dbPath, ids);
       } else if (source === "android-sms") {
         syncResult = await window.docket.onboarding.connectAndroidSms(exportFilePath, ids);
+      } else if (source === "instagram") {
+        syncResult = await window.docket.onboarding.connectInstagram(instagramDir, ids);
       } else {
         syncResult = await window.docket.onboarding.connectImap(
           { host: imapHost, port: imapPort, secure: imapSecure, user: imapUser, appPassword: imapAppPassword, mailbox: imapMailbox },
@@ -107,15 +116,22 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
 
     // The import already succeeded at this point, so a failure here is
     // reported on the done screen, not by sending the user back a step.
-    const blockedIds = sweepResults.filter((r) => r.blockedOnThisMac && selected.has(r.sender)).map((r) => r.sender);
-    if (saveBlockedAsKnown && blockedIds.length > 0) {
+    if (saveBlockedAsKnown) {
       try {
-        savedKnown = await window.docket.onboarding.saveBlockedAsKnown(blockedIds);
+        const macIds = sweepResults.filter((r) => r.blockedOn === "macos" && selected.has(r.sender)).map((r) => r.sender);
+        if (macIds.length > 0) addSaved(await window.docket.onboarding.saveBlockedAsKnown(macIds));
+        if (source === "instagram" && (instagramBlocked?.count ?? 0) > 0) {
+          addSaved(await window.docket.onboarding.importInstagramBlocked(instagramDir));
+        }
       } catch (err) {
         saveKnownError = ipcErrorMessage(err);
       }
     }
     draw();
+  }
+
+  function addSaved(result: { added: number; alreadyKnown: number }): void {
+    savedKnown = { added: savedKnown.added + result.added, alreadyKnown: savedKnown.alreadyKnown + result.alreadyKnown };
   }
 
   function drawConnectForm(pane: HTMLElement): void {
@@ -135,7 +151,19 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
 
     const form = el("div", { style: "display:flex;flex-direction:column;gap:16px;" });
 
-    if (source === "imessage") {
+    if (source === "instagram") {
+      form.append(
+        pathField(
+          "Export folder (unzipped)",
+          instagramDir,
+          (v) => {
+            instagramDir = v;
+            revalidate();
+          },
+          "folder",
+        ),
+      );
+    } else if (source === "imessage") {
       form.append(
         pathField("chat.db location", dbPath, (v) => {
           dbPath = v;
@@ -202,16 +230,16 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
     pane.append(scanBtn);
   }
 
-  function pathField(label: string, value: string, onChange: (v: string) => void): HTMLElement {
+  function pathField(label: string, value: string, onChange: (v: string) => void, pick: "file" | "folder" = "file"): HTMLElement {
     const field = el("div", { class: "field" });
     const row = el("div", { style: "display:flex;gap:8px;" });
     const input = el("input", { type: "text" }) as HTMLInputElement;
     input.value = value;
     input.style.flex = "1";
     input.addEventListener("input", () => onChange(input.value));
-    const browse = el("button", { type: "button", class: "btn" }, ["Choose file…"]);
+    const browse = el("button", { type: "button", class: "btn" }, [pick === "folder" ? "Choose folder…" : "Choose file…"]);
     browse.addEventListener("click", async () => {
-      const picked = await window.docket.onboarding.pickFile();
+      const picked = pick === "folder" ? await window.docket.onboarding.pickFolder() : await window.docket.onboarding.pickFile();
       if (picked) {
         input.value = picked;
         onChange(picked);
@@ -238,11 +266,13 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         `The next screen lists everyone we found in your ${SOURCE_LABEL[source]} — ${sweepResults.length} sender${sweepResults.length === 1 ? "" : "s"}. Nothing is added to your vault yet. You'll choose exactly who to include.`,
       ]),
     );
-    const blockedHere = sweepResults.filter((r) => r.blockedOnThisMac).length;
-    const knownHere = sweepResults.filter((r) => r.knownAccountLabel !== undefined && !r.blockedOnThisMac).length;
-    if (blockedHere > 0 || knownHere > 0) {
+    const macBlockedHere = sweepResults.filter((r) => r.blockedOn === "macos").length;
+    const igBlockedHere = sweepResults.filter((r) => r.blockedOn === "instagram").length;
+    const knownHere = sweepResults.filter((r) => r.knownAccountLabel !== undefined && r.blockedOn === undefined).length;
+    if (macBlockedHere > 0 || igBlockedHere > 0 || knownHere > 0) {
       const parts: string[] = [];
-      if (blockedHere > 0) parts.push(`${blockedHere} ${blockedHere === 1 ? "is" : "are"} on your block list on this Mac`);
+      if (macBlockedHere > 0) parts.push(`${macBlockedHere} ${macBlockedHere === 1 ? "is" : "are"} on your block list on this Mac`);
+      if (igBlockedHere > 0) parts.push(`${igBlockedHere} ${igBlockedHere === 1 ? "is" : "are"} blocked on Instagram`);
       if (knownHere > 0) parts.push(`${knownHere} ${knownHere === 1 ? "is" : "are"} already in your known accounts`);
       pane.append(
         el("p", {}, [
@@ -250,8 +280,16 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         ]),
       );
     }
-    const blocklistNote = describeBlocklist(blocklist, blockedHere);
+    const blocklistNote = describeBlocklist(blocklist, macBlockedHere);
     if (blocklistNote) pane.append(el("p", { style: "font-size:12px;" }, [blocklistNote]));
+    if (instagramBlocked && instagramBlocked.count > igBlockedHere) {
+      const notHere = instagramBlocked.count - igBlockedHere;
+      pane.append(
+        el("p", { style: "font-size:12px;" }, [
+          `You blocked ${notHere} other account${notHere === 1 ? "" : "s"} on Instagram with no messages in this export. Their usernames can still be saved as known accounts on the next screen.`,
+        ]),
+      );
+    }
     const ready = el("button", { type: "button", class: "btn btn--primary" }, ["I'm ready"]);
     ready.addEventListener("click", () => {
       step = "select";
@@ -292,7 +330,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
           draw();
         });
         const title = el("div", { class: "list-block-row-title", style: "display:flex;align-items:center;gap:8px;flex-wrap:wrap;" }, [r.sender]);
-        if (r.blockedOnThisMac) title.append(el("span", { class: "badge badge--medium" }, ["Blocked on this Mac"]));
+        if (r.blockedOn) title.append(el("span", { class: "badge badge--medium" }, [r.blockedOn === "macos" ? "Blocked on this Mac" : "Blocked on Instagram"]));
         if (r.knownAccountLabel !== undefined) title.append(el("span", { class: "provenance-pill" }, [`Known: ${r.knownAccountLabel}`]));
         row.append(
           cb,
@@ -308,14 +346,22 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
       pane.append(list);
     }
 
-    if (sweepResults.some((r) => r.blockedOnThisMac && selected.has(r.sender))) {
+    const igBlockedTotal = source === "instagram" ? (instagramBlocked?.count ?? 0) : 0;
+    if (igBlockedTotal > 0 || sweepResults.some((r) => r.blockedOn === "macos" && selected.has(r.sender))) {
       const saveRow = el("label", { style: "display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;" });
       const saveCb = el("input", { type: "checkbox" }) as HTMLInputElement;
       saveCb.checked = saveBlockedAsKnown;
       saveCb.style.minWidth = "24px";
       saveCb.style.minHeight = "24px";
       saveCb.addEventListener("change", () => (saveBlockedAsKnown = saveCb.checked));
-      saveRow.append(saveCb, el("span", {}, ["Also save the blocked senders I selected as known accounts, so OSINT can compare new senders with them"]));
+      saveRow.append(
+        saveCb,
+        el("span", {}, [
+          igBlockedTotal > 0
+            ? `Also save the ${igBlockedTotal} account${igBlockedTotal === 1 ? "" : "s"} I blocked on Instagram as known accounts, so OSINT can compare new senders with them`
+            : "Also save the blocked senders I selected as known accounts, so OSINT can compare new senders with them",
+        ]),
+      );
       pane.append(saveRow);
     }
 
@@ -338,11 +384,11 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
           : "Done.",
       ]),
     );
-    if (savedKnown) {
-      const total = savedKnown.added + savedKnown.alreadyKnown;
+    const total = savedKnown.added + savedKnown.alreadyKnown;
+    if (total > 0) {
       pane.append(
         el("p", {}, [
-          `Saved ${total} blocked sender${total === 1 ? "" : "s"} as known accounts${savedKnown.alreadyKnown > 0 ? ` (${savedKnown.alreadyKnown} already there)` : ""}. Group them by person under OSINT → Known accounts.`,
+          `Saved ${total} blocked account${total === 1 ? "" : "s"} as known accounts${savedKnown.alreadyKnown > 0 ? ` (${savedKnown.alreadyKnown} already there)` : ""}. Group them by person under OSINT → Known accounts.`,
         ]),
       );
     }
@@ -380,7 +426,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
 }
 
 function isFlagged(row: SweepRow): boolean {
-  return row.blockedOnThisMac || row.knownAccountLabel !== undefined;
+  return row.blockedOn !== undefined || row.knownAccountLabel !== undefined;
 }
 
 /** One line about the block list itself, only when there's something the user should know. */
@@ -409,5 +455,7 @@ function connectHelpText(source: SourceKind): string {
       return "Import an XML export from the “SMS Backup & Restore” app — the standard way to get SMS history off an Android phone.";
     case "imap":
       return "Connects with an app-specific password, never your account's real password.";
+    case "instagram":
+      return "Import the export from Instagram's “Download your information” (Accounts Center → Your information and permissions). Choose JSON as the format and include Messages, Connections, and Personal information. Instagram can take a few days to prepare it. Unsent and deleted messages are not in the export, so they can't be recovered from it.";
   }
 }

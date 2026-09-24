@@ -36,7 +36,7 @@ export interface Settings {
 }
 
 export interface SourceStatus {
-  source: "imessage" | "android-sms" | "imap";
+  source: SourceKind;
   label: string;
   connected: boolean;
 }
@@ -94,7 +94,8 @@ export interface BlocklistSummary {
 }
 
 export interface SweepRow extends MetadataSweepResult {
-  blockedOnThisMac: boolean;
+  /** Set when this sender is on a block list: this Mac's (Messages/FaceTime), or the Instagram export's own. */
+  blockedOn?: "macos" | "instagram";
   /** Set when this sender is already a known account; the person label the user gave it. */
   knownAccountLabel?: string;
 }
@@ -102,6 +103,8 @@ export interface SweepRow extends MetadataSweepResult {
 export interface SweepResponse {
   rows: SweepRow[];
   blocklist: BlocklistSummary;
+  /** Only for an Instagram export: how many accounts its own block list holds. */
+  instagramBlocked?: { count: number; skipped: number };
 }
 
 export interface KnownAccountImportResult extends BlocklistSummary {
@@ -172,12 +175,18 @@ export interface DocketApi {
     sweepImessage(dbPath: string): Promise<SweepResponse>;
     sweepAndroidSms(exportFilePath: string): Promise<SweepResponse>;
     sweepImap(connection: ImapConnectionInput): Promise<SweepResponse>;
+    sweepInstagram(exportDir: string): Promise<SweepResponse>;
+    /** Opens a native folder picker; undefined if the user canceled. */
+    pickFolder(): Promise<string | undefined>;
     /** Saves the chosen senders that are on this Mac's block list as known accounts. Senders not on the block list are ignored. */
     saveBlockedAsKnown(identifiers: string[]): Promise<{ added: number; alreadyKnown: number }>;
     /** Saves the config, stores the credential (imap only), and runs the first ingest — one round trip instead of connect-then-sync. */
     connectImessage(dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
     connectAndroidSms(exportFilePath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
     connectImap(connection: ImapConnectionInput, selectedIdentifiers: string[]): Promise<SyncResult>;
+    connectInstagram(exportDir: string, selectedIdentifiers: string[]): Promise<SyncResult>;
+    /** Saves every account on the Instagram export's block list as a known account, each as its own person. */
+    importInstagramBlocked(exportDir: string): Promise<{ added: number; alreadyKnown: number; skipped: number }>;
     /** Re-runs ingest for an already-connected source using its saved config. */
     syncNow(source: SourceKind): Promise<SyncResult>;
     disconnect(source: SourceKind): Promise<void>;

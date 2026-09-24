@@ -20,6 +20,7 @@ import type { SourceKind } from "../types/message";
 export type SourceConfig =
   | { source: "imessage"; dbPath: string; selectedIdentifiers: string[] }
   | { source: "android-sms"; exportFilePath: string; selectedIdentifiers: string[] }
+  | { source: "instagram"; exportDir: string; selectedIdentifiers: string[] }
   | {
       source: "imap";
       host: string;

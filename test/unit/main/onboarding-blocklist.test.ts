@@ -37,27 +37,37 @@ describe("onboarding and the macOS block list", () => {
     const response = annotateSweep(
       [sweepRow("(555) 123-4567"), sweepRow("+15550001111")],
       knownAccounts,
-      [{ kind: "phone", value: "+15551234567" }],
+      [{ kind: "phone", value: "+15551234567", on: "macos" }],
       { status: "ok", blockedCount: 1, skipped: 0 },
     );
-    expect(response.rows.map((r) => r.blockedOnThisMac)).toEqual([true, false]);
+    expect(response.rows.map((r) => r.blockedOn)).toEqual(["macos", undefined]);
     expect(response.blocklist.blockedCount).toBe(1);
   });
 
   it("marks a blocked email sender too, so it works for IMAP", () => {
-    const response = annotateSweep([sweepRow("Ex@Example.com")], knownAccounts, [{ kind: "email", value: "ex@example.com" }], {
+    const response = annotateSweep([sweepRow("Ex@Example.com")], knownAccounts, [{ kind: "email", value: "ex@example.com", on: "macos" }], {
       status: "ok",
       blockedCount: 1,
       skipped: 0,
     });
-    expect(response.rows[0]!.blockedOnThisMac).toBe(true);
+    expect(response.rows[0]!.blockedOn).toBe("macos");
   });
 
   it("labels a sender that's already a known account with the person's name", () => {
     knownAccounts.add({ personLabel: "my ex", kind: "phone", value: "+15551234567", origin: "manual" });
     const response = annotateSweep([sweepRow("+15551234567")], knownAccounts, [], { status: "not-found", blockedCount: 0, skipped: 0 });
     expect(response.rows[0]!.knownAccountLabel).toBe("my ex");
-    expect(response.rows[0]!.blockedOnThisMac).toBe(false);
+    expect(response.rows[0]!.blockedOn).toBeUndefined();
+  });
+
+  it("matches an Instagram block list username against a sender's alias, not just their display name", () => {
+    const row = { ...sweepRow("Alex B"), aliases: ["alex_b"] };
+    const response = annotateSweep([row, sweepRow("Sam")], knownAccounts, [{ kind: "username", value: "Alex_B", on: "instagram" }], {
+      status: "unsupported-platform",
+      blockedCount: 0,
+      skipped: 0,
+    });
+    expect(response.rows.map((r) => r.blockedOn)).toEqual(["instagram", undefined]);
   });
 
   it("loadBlocklist turns a read failure into a visible status instead of failing the scan", async () => {

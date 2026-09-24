@@ -84,7 +84,7 @@ test.describe("known accounts", () => {
     await expect(window.getByText(/Also save the blocked senders I selected/)).toBeVisible();
 
     await window.getByRole("button", { name: "Add 1 selected" }).click();
-    await expect(window.getByText("Saved 1 blocked sender as known accounts.", { exact: false })).toBeVisible();
+    await expect(window.getByText("Saved 1 blocked account as known accounts.", { exact: false })).toBeVisible();
     await window.getByRole("button", { name: "Back to settings" }).click();
 
     await window.locator('.app-nav a[aria-label="OSINT"]').click();

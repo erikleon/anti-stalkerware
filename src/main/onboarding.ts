@@ -13,9 +13,13 @@ import { connectImap } from "../ingest/imap/reader";
 import { sweepImapSenders } from "../ingest/imap/metadata-sweep";
 import { ImapAdapter } from "../ingest/imap/adapter";
 import { runIngest } from "../pipeline/run-ingest";
+import { loadInstagramExport } from "../ingest/instagram/reader";
+import { sweepInstagramExport } from "../ingest/instagram/metadata-sweep";
+import { InstagramAdapter } from "../ingest/instagram/adapter";
+import { readInstagramBlocked } from "../ingest/instagram/blocked";
 import { expandHome } from "./paths";
 import { readMacosBlocklist, type BlockedIdentifier } from "../ingest/blocklist/macos-blocklist";
-import { accountMatchesIdentifier, type KnownAccountStore } from "../vault/known-accounts";
+import { accountMatchesIdentifier, type KnownAccountKind, type KnownAccountStore } from "../vault/known-accounts";
 
 /**
  * The logic behind onboarding's IPC channels — one function per step, each
@@ -48,6 +52,10 @@ export async function sweepImap(connection: ImapConnectionInput): Promise<Metada
   } finally {
     await client.logout();
   }
+}
+
+export async function sweepInstagram(exportDir: string): Promise<MetadataSweepResult[]> {
+  return sweepInstagramExport(await loadInstagramExport(expandHome(exportDir)));
 }
 
 export async function connectImessage(vault: Vault, dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult> {
@@ -85,6 +93,12 @@ export async function connectImapSource(vault: Vault, connection: ImapConnection
   return runIngest(adapter, vault.store, undefined, undefined);
 }
 
+export async function connectInstagram(vault: Vault, exportDir: string, selectedIdentifiers: string[]): Promise<SyncResult> {
+  const resolvedDir = expandHome(exportDir);
+  vault.sourceConfig.save({ source: "instagram", exportDir: resolvedDir, selectedIdentifiers });
+  return runIngest(new InstagramAdapter({ exportDir: resolvedDir, selectedSenders: selectedIdentifiers }), vault.store, undefined, undefined);
+}
+
 export async function syncNow(vault: Vault, source: SourceKind): Promise<SyncResult> {
   const config = vault.sourceConfig.get(source);
   if (!config) throw new Error(`${source} isn't connected yet`);
@@ -95,6 +109,10 @@ export async function syncNow(vault: Vault, source: SourceKind): Promise<SyncRes
   }
   if (config.source === "android-sms") {
     const adapter = new AndroidSmsAdapter({ exportFilePath: config.exportFilePath, selectedAddresses: config.selectedIdentifiers });
+    return runIngest(adapter, vault.store, undefined, undefined);
+  }
+  if (config.source === "instagram") {
+    const adapter = new InstagramAdapter({ exportDir: config.exportDir, selectedSenders: config.selectedIdentifiers });
     return runIngest(adapter, vault.store, undefined, undefined);
   }
 
@@ -131,25 +149,35 @@ export async function loadBlocklist(read: typeof readMacosBlocklist = readMacosB
   }
 }
 
+/** One entry from any block list, tagged with where it came from. */
+export interface BlockedEntry {
+  kind: KnownAccountKind;
+  value: string;
+  on: "macos" | "instagram";
+}
+
 /**
- * Marks each scanned sender that is on this Mac's block list, or is
- * already a known account. Onboarding uses this to put blocked senders
- * first and pre-select them: their history from before the block is the
- * baseline OSINT later compares a new number against.
+ * Marks each scanned sender that is on a block list (this Mac's, or the
+ * Instagram export's own), or is already a known account. A sender's
+ * aliases count too: an Instagram sender is named by display name, but
+ * the block list holds usernames. Onboarding uses this to put blocked
+ * senders first and pre-select them: their history from before the
+ * block is the baseline OSINT later compares a new account against.
  */
 export function annotateSweep(
   rows: readonly MetadataSweepResult[],
   knownAccounts: KnownAccountStore,
-  blocked: readonly BlockedIdentifier[],
+  blocked: readonly BlockedEntry[],
   summary: BlocklistSummary,
 ): SweepResponse {
   return {
     rows: rows.map((row) => {
-      const known = knownAccounts.findMatch(row.sender);
-      const isBlocked = blocked.some((entry) => accountMatchesIdentifier(entry, row.sender));
+      const names = [row.sender, ...(row.aliases ?? [])];
+      const known = names.map((name) => knownAccounts.findMatch(name)).find((match) => match !== undefined);
+      const blockedEntry = blocked.find((entry) => names.some((name) => accountMatchesIdentifier(entry, name)));
       return {
         ...row,
-        blockedOnThisMac: isBlocked,
+        ...(blockedEntry ? { blockedOn: blockedEntry.on } : {}),
         ...(known ? { knownAccountLabel: known.personLabel } : {}),
       };
     }),
@@ -176,6 +204,18 @@ export async function saveBlockedAsKnown(
     return entry ? [{ personLabel: identifier, kind: entry.kind, value: identifier, origin: "macos-blocklist" as const }] : [];
   });
   return knownAccounts.addMany(inputs);
+}
+
+/** Imports the Instagram export's whole block list as known accounts, one person per username. */
+export async function importInstagramBlocked(
+  knownAccounts: KnownAccountStore,
+  exportDir: string,
+): Promise<{ added: number; alreadyKnown: number; skipped: number }> {
+  const { usernames, skipped } = await readInstagramBlocked(expandHome(exportDir));
+  const result = knownAccounts.addMany(
+    usernames.map((username) => ({ personLabel: `@${username}`, kind: "username" as const, value: username, origin: "instagram-blocklist" as const })),
+  );
+  return { ...result, skipped };
 }
 
 /** Imports this Mac's whole block list as known accounts, one person per entry. */

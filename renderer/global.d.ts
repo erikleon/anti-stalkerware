@@ -28,7 +28,7 @@ declare global {
   }
 
   type MessageProvenance = "live" | "edit-history" | "wal-recovered";
-  type SourceKind = "imessage" | "android-sms" | "imap";
+  type SourceKind = "imessage" | "android-sms" | "imap" | "instagram";
 
   interface WireMessage {
     id: string;
@@ -126,6 +126,7 @@ declare global {
     messageCount: number;
     firstSeenAt: Date;
     lastSeenAt: Date;
+    aliases?: string[];
   }
 
   interface ImapConnectionInput {
@@ -150,13 +151,14 @@ declare global {
   }
 
   interface SweepRow extends MetadataSweepResult {
-    blockedOnThisMac: boolean;
+    blockedOn?: "macos" | "instagram";
     knownAccountLabel?: string;
   }
 
   interface SweepResponse {
     rows: SweepRow[];
     blocklist: BlocklistSummary;
+    instagramBlocked?: { count: number; skipped: number };
   }
 
   type KnownAccountKind = "phone" | "email" | "username";
@@ -237,6 +239,10 @@ declare global {
       sweepImessage(dbPath: string): Promise<SweepResponse>;
       sweepAndroidSms(exportFilePath: string): Promise<SweepResponse>;
       sweepImap(connection: ImapConnectionInput): Promise<SweepResponse>;
+      sweepInstagram(exportDir: string): Promise<SweepResponse>;
+      pickFolder(): Promise<string | undefined>;
+      connectInstagram(exportDir: string, selectedIdentifiers: string[]): Promise<SyncResult>;
+      importInstagramBlocked(exportDir: string): Promise<{ added: number; alreadyKnown: number; skipped: number }>;
       saveBlockedAsKnown(identifiers: string[]): Promise<{ added: number; alreadyKnown: number }>;
       connectImessage(dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
       connectAndroidSms(exportFilePath: string, selectedIdentifiers: string[]): Promise<SyncResult>;

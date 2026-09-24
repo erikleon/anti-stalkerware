@@ -4,7 +4,8 @@ import { removeTestDir } from "../../helpers/tmp-dir";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { initializeVault, openVault, type Vault } from "../../../src/vault/vault";
-import { connectAndroidSms, connectImapSource, connectImessage, disconnect, syncNow } from "../../../src/main/onboarding";
+import { connectAndroidSms, connectImapSource, connectImessage, connectInstagram, disconnect, importInstagramBlocked, syncNow } from "../../../src/main/onboarding";
+import { writeInstagramExport } from "../../helpers/instagram-export";
 
 function buildAndroidExport(smsRows: string): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<smses count="1">\n${smsRows}</smses>`;
@@ -119,5 +120,37 @@ describe("onboarding orchestration", () => {
       dbPath: join(homedir(), "docket-test-nonexistent-chat.db"),
       selectedIdentifiers: ["+15551234567"],
     });
+  });
+
+  it("connectInstagram saves the export folder and imports the selected sender; a re-sync adds nothing new", async () => {
+    const exportDir = join(dir, "instagram-export");
+    writeInstagramExport(exportDir, {
+      owner: "Me Here",
+      threads: [
+        {
+          folder: "alexb_111",
+          participants: ["Alex B", "Me Here"],
+          messages: [
+            { sender_name: "Alex B", timestamp_ms: 1_700_000_000_000, content: "answer me" },
+            { sender_name: "Me Here", timestamp_ms: 1_700_000_001_000, content: "stop" },
+          ],
+        },
+      ],
+      blocked: { relationships_blocked_users: [{ title: "alexb_old", string_list_data: [{ href: "https://www.instagram.com/alexb_old" }] }] },
+    });
+
+    const result = await connectInstagram(vault, exportDir, ["Alex B"]);
+    expect(result).toEqual({ appended: 2, quarantined: 0 });
+    expect(vault.sourceConfig.get("instagram")).toEqual({ source: "instagram", exportDir, selectedIdentifiers: ["Alex B"] });
+
+    const threads = await vault.store.listThreads();
+    expect(threads.map((t) => t.threadId)).toEqual(["instagram:inbox/alexb_111"]);
+
+    await syncNow(vault, "instagram");
+    expect(await vault.store.list("instagram:inbox/alexb_111")).toHaveLength(2);
+
+    const imported = await importInstagramBlocked(vault.knownAccounts, exportDir);
+    expect(imported).toEqual({ added: 1, alreadyKnown: 0, skipped: 0 });
+    expect(vault.knownAccounts.list()[0]).toMatchObject({ personLabel: "@alexb_old", kind: "username", origin: "instagram-blocklist" });
   });
 });

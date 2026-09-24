@@ -14,6 +14,8 @@ import type { VaultStore } from "../vault/store";
 import { DESTROY_CONFIRMATION_PHRASE, DESTROY_DISCLOSURE_TEXT, confirmationMatches, destroyVault } from "../vault/destroy";
 import type { Message, SourceKind } from "../types/message";
 import * as onboarding from "./onboarding";
+import { readInstagramBlocked } from "../ingest/instagram/blocked";
+import { expandHome } from "./paths";
 import type {
   CandidateInput,
   DestroyResult,
@@ -37,6 +39,7 @@ const SOURCE_LABELS: Array<{ source: SourceStatus["source"]; label: string }> = 
   { source: "imessage", label: "iMessage" },
   { source: "android-sms", label: "Android SMS export" },
   { source: "imap", label: "Email (IMAP)" },
+  { source: "instagram", label: "Instagram export" },
 ];
 
 /** Every VaultStore-touching handler needs an open vault; this is the one place that checks and throws, so no handler below has to remember to. */
@@ -189,15 +192,35 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
   });
   // Every sweep is marked against this Mac's block list and the known
   // accounts, so blocked senders show up first in the picker.
-  async function annotated(rows: Parameters<typeof onboarding.annotateSweep>[0]): Promise<SweepResponse> {
+  async function annotated(rows: Parameters<typeof onboarding.annotateSweep>[0], extraBlocked: onboarding.BlockedEntry[] = []): Promise<SweepResponse> {
     const { summary, entries } = await onboarding.loadBlocklist();
-    return onboarding.annotateSweep(rows, requireVault(session).knownAccounts, entries, summary);
+    const macBlocked = entries.map((entry) => ({ ...entry, on: "macos" as const }));
+    return onboarding.annotateSweep(rows, requireVault(session).knownAccounts, [...macBlocked, ...extraBlocked], summary);
   }
   bind<[string], SweepResponse>(session, "onboarding:sweepImessage", async (dbPath) => annotated(await onboarding.sweepImessage(dbPath)));
   bind<[string], SweepResponse>(session, "onboarding:sweepAndroidSms", async (exportFilePath) =>
     annotated(await onboarding.sweepAndroidSms(exportFilePath)),
   );
   bind<[ImapConnectionInput], SweepResponse>(session, "onboarding:sweepImap", async (connection) => annotated(await onboarding.sweepImap(connection)));
+  bind<[string], SweepResponse>(session, "onboarding:sweepInstagram", async (exportDir) => {
+    const rows = await onboarding.sweepInstagram(exportDir);
+    const igBlocked = await readInstagramBlocked(expandHome(exportDir));
+    const response = await annotated(
+      rows,
+      igBlocked.usernames.map((value) => ({ kind: "username" as const, value, on: "instagram" as const })),
+    );
+    return { ...response, instagramBlocked: { count: igBlocked.usernames.length, skipped: igBlocked.skipped } };
+  });
+  bind<[string, string[]], SyncResult>(session, "onboarding:connectInstagram", async (exportDir, selected) =>
+    onboarding.connectInstagram(requireVault(session), exportDir, selected),
+  );
+  bind<[string], { added: number; alreadyKnown: number; skipped: number }>(session, "onboarding:importInstagramBlocked", async (exportDir) =>
+    onboarding.importInstagramBlocked(requireVault(session).knownAccounts, exportDir),
+  );
+  bind<[], string | undefined>(session, "onboarding:pickFolder", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory"] });
+    return canceled ? undefined : filePaths[0];
+  });
   bind<[string[]], { added: number; alreadyKnown: number }>(session, "onboarding:saveBlockedAsKnown", async (identifiers) =>
     onboarding.saveBlockedAsKnown(requireVault(session).knownAccounts, identifiers),
   );
