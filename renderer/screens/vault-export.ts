@@ -32,15 +32,18 @@ export async function renderVaultExportScreen(container: Element): Promise<void>
       listPane.append(el("div", { class: "empty-state" }, ["No messages match."]));
     }
     for (const m of filtered) {
-      listPane.append(
-        el("div", { class: "message-row", style: "cursor:default;" }, [
-          el("div", { class: "message-row-top" }, [
-            el("span", { class: "message-row-sender" }, [m.fromSelf ? "You" : m.sender]),
-            el("span", { class: "message-row-time" }, [m.sentAt.toLocaleDateString()]),
-          ]),
-          el("div", { class: "message-row-preview" }, [m.text]),
+      // .message-row is a row (built for triage's checkbox | content
+      // layout) — this screen has no checkbox, but still needs its own
+      // content wrapped in a column so sender/time and preview stack
+      // instead of sitting side by side.
+      const content = el("div", { style: "display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;" }, [
+        el("div", { class: "message-row-top" }, [
+          el("span", { class: "message-row-sender" }, [m.fromSelf ? "You" : m.sender]),
+          el("span", { class: "message-row-time" }, [m.sentAt.toLocaleDateString()]),
         ]),
-      );
+        el("div", { class: "message-row-preview" }, [m.text]),
+      ]);
+      listPane.append(el("div", { class: "message-row", style: "cursor:default;" }, [content]));
     }
     screen.append(listPane);
 
