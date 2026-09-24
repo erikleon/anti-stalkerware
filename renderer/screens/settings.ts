@@ -7,12 +7,12 @@ export async function renderSettingsScreen(
   navigateToBoundaries: () => void,
   lockNow: () => void,
 ): Promise<void> {
-  const settings = await window.antistalker.settings.get();
-  let sources = await window.antistalker.settings.listSources();
+  const settings = await window.docket.settings.get();
+  let sources = await window.docket.settings.listSources();
   let syncingSource: SourceKind | undefined;
 
   async function refreshSources(): Promise<void> {
-    sources = await window.antistalker.settings.listSources();
+    sources = await window.docket.settings.listSources();
     draw();
   }
 
@@ -20,7 +20,7 @@ export async function renderSettingsScreen(
     syncingSource = source;
     draw();
     try {
-      const result = await window.antistalker.onboarding.syncNow(source);
+      const result = await window.docket.onboarding.syncNow(source);
       showToast(`Imported ${result.appended} new message${result.appended === 1 ? "" : "s"}`);
     } catch (err) {
       showToast(`Sync failed: ${ipcErrorMessage(err)}`);
@@ -30,7 +30,7 @@ export async function renderSettingsScreen(
   }
 
   async function disconnect(source: SourceKind): Promise<void> {
-    await window.antistalker.onboarding.disconnect(source);
+    await window.docket.onboarding.disconnect(source);
     await refreshSources();
   }
 
@@ -73,7 +73,7 @@ export async function renderSettingsScreen(
     checkbox.style.minWidth = "24px";
     checkbox.style.minHeight = "24px";
     checkbox.addEventListener("change", async () => {
-      await window.antistalker.settings.setToastOnTriageAction(checkbox.checked);
+      await window.docket.settings.setToastOnTriageAction(checkbox.checked);
       settings.toastOnTriageAction = checkbox.checked;
     });
     toggleRow.append(checkbox, el("span", {}, ["Show a confirmation toast after Hide / Mark reviewed"]));
@@ -85,7 +85,7 @@ export async function renderSettingsScreen(
     autoLockInput.addEventListener("change", async () => {
       const minutes = Math.max(0, Math.floor(Number(autoLockInput.value) || 0));
       autoLockInput.value = String(minutes);
-      await window.antistalker.settings.setAutoLockMinutes(minutes);
+      await window.docket.settings.setAutoLockMinutes(minutes);
       settings.autoLockMinutes = minutes;
     });
     autoLockRow.append(

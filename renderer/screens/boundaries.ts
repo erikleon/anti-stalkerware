@@ -11,13 +11,13 @@ function todayInputValue(): string {
  * setup, not something visited routinely.
  */
 export async function renderBoundariesScreen(container: Element): Promise<void> {
-  let boundaries = await window.antistalker.userContext.listBoundaries();
-  let taggedPhrases = await window.antistalker.userContext.listTaggedPhrases();
+  let boundaries = await window.docket.userContext.listBoundaries();
+  let taggedPhrases = await window.docket.userContext.listTaggedPhrases();
 
   async function refresh(): Promise<void> {
     [boundaries, taggedPhrases] = await Promise.all([
-      window.antistalker.userContext.listBoundaries(),
-      window.antistalker.userContext.listTaggedPhrases(),
+      window.docket.userContext.listBoundaries(),
+      window.docket.userContext.listTaggedPhrases(),
     ]);
     draw();
   }
@@ -49,7 +49,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
         );
         const removeBtn = el("button", { type: "button", class: "btn" }, ["Remove"]);
         removeBtn.addEventListener("click", async () => {
-          await window.antistalker.userContext.removeBoundary(b.id);
+          await window.docket.userContext.removeBoundary(b.id);
           await refresh();
         });
         row.append(removeBtn);
@@ -68,7 +68,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
       if (descInput.value.trim().length === 0) return;
       const setAt = dateInput.value ? new Date(dateInput.value) : new Date();
       const sender = senderInput.value.trim();
-      await window.antistalker.userContext.addBoundary(descInput.value.trim(), setAt, sender.length > 0 ? sender : undefined);
+      await window.docket.userContext.addBoundary(descInput.value.trim(), setAt, sender.length > 0 ? sender : undefined);
       descInput.value = "";
       senderInput.value = "";
       await refresh();
@@ -97,7 +97,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
         );
         const removeBtn = el("button", { type: "button", class: "btn" }, ["Remove"]);
         removeBtn.addEventListener("click", async () => {
-          await window.antistalker.userContext.removeTaggedPhrase(t.id);
+          await window.docket.userContext.removeTaggedPhrase(t.id);
           await refresh();
         });
         row.append(removeBtn);
@@ -112,7 +112,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
     const addPhraseBtn = el("button", { type: "button", class: "btn" }, ["Add tagged phrase"]);
     addPhraseBtn.addEventListener("click", async () => {
       if (phraseInput.value.trim().length === 0) return;
-      await window.antistalker.userContext.addTaggedPhrase(phraseInput.value.trim(), noteInput.value.trim());
+      await window.docket.userContext.addTaggedPhrase(phraseInput.value.trim(), noteInput.value.trim());
       phraseInput.value = "";
       noteInput.value = "";
       await refresh();

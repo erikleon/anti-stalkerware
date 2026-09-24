@@ -15,7 +15,7 @@ describe("onboarding orchestration", () => {
   let vault: Vault;
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-onboarding-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-onboarding-test-"));
     await initializeVault(dir, "pass");
     vault = await openVault(dir, "pass");
   });
@@ -113,10 +113,10 @@ describe("onboarding orchestration", () => {
     // Regression coverage for the bug expandHome fixed: the saved config
     // (what syncNow() re-reads later) has to be the real, already-expanded
     // path too, not the literal "~/..." the onboarding form pre-fills.
-    await expect(connectImessage(vault, "~/antistalker-test-nonexistent-chat.db", ["+15551234567"])).rejects.toThrow();
+    await expect(connectImessage(vault, "~/docket-test-nonexistent-chat.db", ["+15551234567"])).rejects.toThrow();
     expect(vault.sourceConfig.get("imessage")).toEqual({
       source: "imessage",
-      dbPath: join(homedir(), "antistalker-test-nonexistent-chat.db"),
+      dbPath: join(homedir(), "docket-test-nonexistent-chat.db"),
       selectedIdentifiers: ["+15551234567"],
     });
   });

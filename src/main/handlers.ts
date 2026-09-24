@@ -70,7 +70,7 @@ function bindGated<Args extends unknown[], Result>(
   });
 }
 
-/** Registers every IPC channel the renderer can call — the concrete implementation behind window.antistalker (api.ts / preload.ts). */
+/** Registers every IPC channel the renderer can call — the concrete implementation behind window.docket (api.ts / preload.ts). */
 export function registerHandlers(session: VaultSession, settings: SettingsStore, mainWindow: BrowserWindow, hotkeyStatus: HotkeyStatus): void {
   // Not vault-gated — the Support screen reads this from the lock screen
   // too, before any passphrase, same as its other content.
@@ -179,7 +179,7 @@ async function exportToFile(session: VaultSession, mainWindow: BrowserWindow): P
 
   const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
     title: "Export vault contents",
-    defaultPath: `antistalker-export-${Date.now()}.json`,
+    defaultPath: `docket-export-${Date.now()}.json`,
     filters: [{ name: "JSON", extensions: ["json"] }],
   });
   if (canceled || !filePath) return undefined;

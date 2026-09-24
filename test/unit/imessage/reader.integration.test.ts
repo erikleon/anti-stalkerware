@@ -84,7 +84,7 @@ describe("reader — against a synthetic chat.db-shaped database", () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-reader-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-reader-test-"));
     dbPath = join(dir, "chat.db");
     db = buildChatDb(dbPath);
     db.prepare("INSERT INTO handle (ROWID, id) VALUES (1, ?)").run("stalker@example.com");
@@ -238,7 +238,7 @@ describe("openChatDbReadOnly", () => {
   let dbPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-reader-open-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-reader-open-test-"));
     dbPath = join(dir, "chat.db");
     buildChatDb(dbPath).close();
   });

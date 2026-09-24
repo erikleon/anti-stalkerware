@@ -12,7 +12,7 @@ describe("UserContextStore", () => {
   let store: UserContextStore;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-user-context-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-user-context-test-"));
     db = new Database(join(dir, "vault.db"));
     store = new UserContextStore(db);
   });

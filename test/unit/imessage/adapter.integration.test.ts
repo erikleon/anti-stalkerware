@@ -37,7 +37,7 @@ describe("ImessageAdapter", () => {
   let dbPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-adapter-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-adapter-test-"));
     dbPath = join(dir, "chat.db");
     buildChatDb(dbPath).close();
   });
@@ -81,7 +81,7 @@ describe("watchForRetractions", () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-retraction-watch-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-retraction-watch-test-"));
     dbPath = join(dir, "chat.db");
     db = buildChatDb(dbPath);
   });

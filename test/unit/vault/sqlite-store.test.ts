@@ -42,7 +42,7 @@ describe("SqliteVaultStore", () => {
   let store: SqliteVaultStore;
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-vault-store-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-vault-store-test-"));
     dbPath = join(dir, "vault.db");
     const metadata = createVaultMetadata("test passphrase");
     key = await new ScryptGcmVaultCrypto(metadata).unlock("test passphrase");

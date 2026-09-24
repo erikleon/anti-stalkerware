@@ -21,7 +21,7 @@ test.describe("boundaries and tagged phrases", () => {
   let exportPath: string;
 
   test.beforeEach(async () => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-boundaries-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-boundaries-"));
     exportPath = join(userDataDir, "export.xml");
     writeFileSync(
       exportPath,

@@ -23,7 +23,7 @@ describe("recoverRowsFromWal — against a real SQLite WAL file", () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-wal-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-wal-test-"));
     dbPath = join(dir, "test.db");
     walPath = `${dbPath}-wal`;
     db = new Database(dbPath);

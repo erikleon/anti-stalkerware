@@ -19,7 +19,7 @@ describe("watchWalFile", () => {
   let handle: WalWatcherHandle | undefined;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-wal-watch-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-wal-watch-test-"));
     walPath = join(dir, "chat.db-wal");
     writeFileSync(walPath, "initial");
   });

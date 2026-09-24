@@ -3,9 +3,9 @@ import { el, mount } from "../dom.js";
 /** Two-pane: full vault contents (not scoped to needs-review) plus the honest D25 export disclosure and history. No blur toggle — by the time someone is exporting, blur has served its purpose (DESIGN.md). */
 export async function renderVaultExportScreen(container: Element): Promise<void> {
   const [messages, disclosure, history] = await Promise.all([
-    window.antistalker.vaultExport.listAll(),
-    window.antistalker.vaultExport.disclosureText(),
-    window.antistalker.vaultExport.history(),
+    window.docket.vaultExport.listAll(),
+    window.docket.vaultExport.disclosureText(),
+    window.docket.vaultExport.history(),
   ]);
 
   let filter = "";
@@ -52,7 +52,7 @@ export async function renderVaultExportScreen(container: Element): Promise<void>
 
     const exportBtn = el("button", { type: "button", class: "btn btn--primary" }, ["Export to file…"]);
     exportBtn.addEventListener("click", async () => {
-      const result = await window.antistalker.vaultExport.exportToFile();
+      const result = await window.docket.vaultExport.exportToFile();
       exportStatus = result ? `Exported ${result.messageCount} messages to ${result.filePath}` : undefined;
       draw();
     });

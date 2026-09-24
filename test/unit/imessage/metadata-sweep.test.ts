@@ -14,7 +14,7 @@ describe("sweepMessageMetadata", () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-sweep-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-sweep-test-"));
     db = new Database(join(dir, "chat.db"));
     db.defaultSafeIntegers(true);
     db.exec(`

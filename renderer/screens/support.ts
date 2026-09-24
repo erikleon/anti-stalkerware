@@ -78,7 +78,7 @@ export function renderSupportScreen(container: Element, options: { onBack?: () =
   // screen has more important things on it than an error toast.
   const hotkeyStatusLine = el("p", { style: "font-size:12px;color:var(--text-dim);" }, []);
   pane.append(hotkeyStatusLine);
-  window.antistalker.support
+  window.docket.support
     .hotkeyStatus()
     .then(({ registered, label }) => {
       hotkeyStatusLine.textContent = registered

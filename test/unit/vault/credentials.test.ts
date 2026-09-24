@@ -15,7 +15,7 @@ describe("SqliteCredentialStore", () => {
   let store: SqliteCredentialStore;
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-credentials-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-credentials-test-"));
     dbPath = join(dir, "vault.db");
     db = new Database(dbPath);
     const metadata = createVaultMetadata("pass");

@@ -28,7 +28,7 @@ export async function renderTriageScreen(container: Element): Promise<void> {
   let counts: Record<Bucket, number> = { "needs-review": 0, reviewed: 0, all: 0 };
   let selectedThreadId: string | undefined;
   let selectedMessages: WireMessage[] = [];
-  const settings = await window.antistalker.settings.get();
+  const settings = await window.docket.settings.get();
 
   // Keyboard power-navigation (TODOS item 4): arrow/j-k moves a roving
   // tabindex through the row buttons, Enter opens the focused row for free
@@ -80,7 +80,7 @@ export async function renderTriageScreen(container: Element): Promise<void> {
   }
 
   async function refresh(): Promise<void> {
-    [rows, counts] = await Promise.all([window.antistalker.triage.listRows(bucket), window.antistalker.triage.counts()]);
+    [rows, counts] = await Promise.all([window.docket.triage.listRows(bucket), window.docket.triage.counts()]);
     if (selectedThreadId && !rows.some((r) => r.threadId === selectedThreadId)) {
       selectedThreadId = undefined;
       selectedMessages = [];
@@ -90,15 +90,15 @@ export async function renderTriageScreen(container: Element): Promise<void> {
 
   async function selectThread(threadId: string): Promise<void> {
     selectedThreadId = threadId;
-    selectedMessages = await window.antistalker.triage.listMessages(threadId);
+    selectedMessages = await window.docket.triage.listMessages(threadId);
     draw();
   }
 
   async function act(row: TriageRow, kind: "review" | "hide"): Promise<void> {
     if (kind === "review") {
-      await window.antistalker.triage.setReviewed(row.latestMessageId, true);
+      await window.docket.triage.setReviewed(row.latestMessageId, true);
     } else {
-      await window.antistalker.triage.setHidden(row.latestMessageId, true);
+      await window.docket.triage.setHidden(row.latestMessageId, true);
     }
     if (settings.toastOnTriageAction) {
       showToast(kind === "review" ? "Marked reviewed" : "Hidden from Needs review");
@@ -108,7 +108,7 @@ export async function renderTriageScreen(container: Element): Promise<void> {
 
   async function hideSelected(): Promise<void> {
     const targets = rows.filter((r) => selectedThreadIds.has(r.threadId) && !r.hidden);
-    await Promise.all(targets.map((r) => window.antistalker.triage.setHidden(r.latestMessageId, true)));
+    await Promise.all(targets.map((r) => window.docket.triage.setHidden(r.latestMessageId, true)));
     if (settings.toastOnTriageAction && targets.length > 0) {
       showToast(`Hidden ${targets.length} thread${targets.length === 1 ? "" : "s"} from Needs review`);
     }

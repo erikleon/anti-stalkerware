@@ -10,7 +10,7 @@ describe("AndroidSmsAdapter", () => {
   let exportPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-android-sms-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-android-sms-test-"));
     exportPath = join(dir, "sms-backup.xml");
     writeFileSync(
       exportPath,

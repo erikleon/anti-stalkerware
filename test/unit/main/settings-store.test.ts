@@ -10,7 +10,7 @@ describe("SettingsStore", () => {
   let filePath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-settings-store-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-settings-store-test-"));
     filePath = join(dir, "settings.json");
   });
 

@@ -10,7 +10,7 @@ describe("initializeVault + openVault", () => {
   let vault: Vault | undefined;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-vault-e2e-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-vault-e2e-test-"));
   });
 
   afterEach(() => {

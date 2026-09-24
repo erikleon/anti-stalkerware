@@ -46,11 +46,11 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
     error = undefined;
     try {
       if (source === "imessage") {
-        sweepResults = await window.antistalker.onboarding.sweepImessage(dbPath);
+        sweepResults = await window.docket.onboarding.sweepImessage(dbPath);
       } else if (source === "android-sms") {
-        sweepResults = await window.antistalker.onboarding.sweepAndroidSms(exportFilePath);
+        sweepResults = await window.docket.onboarding.sweepAndroidSms(exportFilePath);
       } else {
-        sweepResults = await window.antistalker.onboarding.sweepImap({
+        sweepResults = await window.docket.onboarding.sweepImap({
           host: imapHost,
           port: imapPort,
           secure: imapSecure,
@@ -73,11 +73,11 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
     const ids = [...selected];
     try {
       if (source === "imessage") {
-        syncResult = await window.antistalker.onboarding.connectImessage(dbPath, ids);
+        syncResult = await window.docket.onboarding.connectImessage(dbPath, ids);
       } else if (source === "android-sms") {
-        syncResult = await window.antistalker.onboarding.connectAndroidSms(exportFilePath, ids);
+        syncResult = await window.docket.onboarding.connectAndroidSms(exportFilePath, ids);
       } else {
-        syncResult = await window.antistalker.onboarding.connectImap(
+        syncResult = await window.docket.onboarding.connectImap(
           { host: imapHost, port: imapPort, secure: imapSecure, user: imapUser, appPassword: imapAppPassword, mailbox: imapMailbox },
           ids,
         );
@@ -183,7 +183,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
     input.addEventListener("input", () => onChange(input.value));
     const browse = el("button", { type: "button", class: "btn" }, ["Choose file…"]);
     browse.addEventListener("click", async () => {
-      const picked = await window.antistalker.onboarding.pickFile();
+      const picked = await window.docket.onboarding.pickFile();
       if (picked) {
         input.value = picked;
         onChange(picked);

@@ -1,5 +1,5 @@
 /**
- * The renderer-facing API surface, exposed at window.antistalker by
+ * The renderer-facing API surface, exposed at window.docket by
  * preload.ts via contextBridge. Plain data in, plain data out — the
  * renderer never touches a VaultStore, a Database handle, or anything
  * else that isn't safe to hand across the context-isolation boundary.
@@ -79,7 +79,7 @@ export interface SyncResult {
   quarantined: number;
 }
 
-export interface AntistalkerApi {
+export interface DocketApi {
   vault: {
     exists(): Promise<boolean>;
     initialize(passphrase: string): Promise<UnlockResult>;

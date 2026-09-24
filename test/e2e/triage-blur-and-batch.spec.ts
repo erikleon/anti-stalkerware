@@ -17,7 +17,7 @@ test.describe("triage: blur toggle and batch selection", () => {
   let userDataDir: string;
 
   test.beforeEach(async () => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-blur-batch-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-blur-batch-"));
     const exportPath = join(userDataDir, "export.xml");
     writeFileSync(
       exportPath,

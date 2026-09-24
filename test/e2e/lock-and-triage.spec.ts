@@ -18,7 +18,7 @@ test.describe("first run: create a vault and reach triage", () => {
   let userDataDir: string;
 
   test.beforeEach(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-"));
   });
 
   test.afterEach(() => {

@@ -3,8 +3,8 @@ import { el, mount } from "../dom.js";
 /** Matches vault/destroy.ts's confirmationMatches() exactly — the button stays disabled and visually inert until the typed text matches the exact phrase, no leniency. */
 export async function renderDestroyScreen(container: Element, onDone: () => void): Promise<void> {
   const [disclosure, phrase] = await Promise.all([
-    window.antistalker.destroy.disclosureText(),
-    window.antistalker.destroy.confirmationPhrase(),
+    window.docket.destroy.disclosureText(),
+    window.docket.destroy.confirmationPhrase(),
   ]);
 
   let typed = "";
@@ -42,7 +42,7 @@ export async function renderDestroyScreen(container: Element, onDone: () => void
     const confirmBtn = el("button", { type: "button", class: "btn btn--danger" }, ["Remove local app data"]) as HTMLButtonElement;
     confirmBtn.disabled = typed !== phrase;
     confirmBtn.addEventListener("click", async () => {
-      result = await window.antistalker.destroy.confirm(typed);
+      result = await window.docket.destroy.confirm(typed);
       draw();
       if (result.removed) onDone();
     });

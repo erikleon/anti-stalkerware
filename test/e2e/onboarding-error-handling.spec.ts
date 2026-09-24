@@ -19,7 +19,7 @@ test.describe("onboarding: error handling", () => {
   let userDataDir: string;
 
   test.beforeEach(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-onboarding-errors-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-onboarding-errors-"));
   });
 
   test.afterEach(() => {

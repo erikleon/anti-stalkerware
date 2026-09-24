@@ -22,14 +22,14 @@ if (!root) throw new Error("missing #app root element");
 let state: AppState = { kind: "loading" };
 
 async function boot(info?: string): Promise<void> {
-  const exists = await window.antistalker.vault.exists();
+  const exists = await window.docket.vault.exists();
   state = { kind: "lock", mode: exists ? "unlock" : "create", ...(info ? { info } : {}) };
   render();
 }
 
 async function submitPassphrase(passphrase: string): Promise<void> {
   if (state.kind !== "lock") return;
-  const result = state.mode === "create" ? await window.antistalker.vault.initialize(passphrase) : await window.antistalker.vault.unlock(passphrase);
+  const result = state.mode === "create" ? await window.docket.vault.initialize(passphrase) : await window.docket.vault.unlock(passphrase);
   if (result.ok) {
     state = { kind: "unlocked", screen: "triage" };
     render();
@@ -101,7 +101,7 @@ function render(): void {
         },
         () => navigate("boundaries"),
         () => {
-          void window.antistalker.vault.lock().then(() => boot());
+          void window.docket.vault.lock().then(() => boot());
         },
       );
       break;
@@ -129,7 +129,7 @@ function navigate(screen: Screen): void {
 // Main decides an idle lockout on its own timer — nothing here is polling
 // for it, so it has to be pushed. Re-running boot() is safe from any
 // screen: it just re-checks vault existence and shows the lock screen.
-window.antistalker.vault.onLocked(() => {
+window.docket.vault.onLocked(() => {
   void boot("Locked after inactivity.");
 });
 

@@ -9,7 +9,7 @@ describe("destroyVault", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-destroy-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-destroy-test-"));
     writeFileSync(join(dir, "vault.db"), "db contents");
     writeFileSync(join(dir, "vault.db-wal"), "wal contents");
     writeFileSync(join(dir, "vault.meta.json"), "{}");

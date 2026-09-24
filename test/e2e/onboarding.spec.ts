@@ -19,7 +19,7 @@ test.describe("onboarding: connect an Android SMS export", () => {
   let exportPath: string;
 
   test.beforeEach(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-onboarding-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-onboarding-"));
     exportPath = join(userDataDir, "export.xml");
     writeFileSync(
       exportPath,

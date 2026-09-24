@@ -17,7 +17,7 @@ test.describe("triage: keyboard power-navigation", () => {
   let exportPath: string;
 
   test.beforeEach(async () => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-kbnav-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-kbnav-"));
     exportPath = join(userDataDir, "export.xml");
     writeFileSync(
       exportPath,

@@ -13,7 +13,7 @@ describe("SqliteIntegrityLog", () => {
   let log: SqliteIntegrityLog;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-integrity-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-integrity-test-"));
     db = new Database(join(dir, "vault.db"));
     log = new SqliteIntegrityLog(db);
   });

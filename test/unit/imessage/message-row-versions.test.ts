@@ -14,7 +14,7 @@ describe("extractMessageRowVersions — against a real message-shaped WAL file",
   let columnNames: string[];
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-row-versions-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-row-versions-test-"));
     dbPath = join(dir, "chat.db");
     db = new Database(dbPath);
     db.pragma("journal_mode = WAL");

@@ -12,7 +12,7 @@ describe("TriageStateStore", () => {
   let store: TriageStateStore;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-triage-state-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-triage-state-test-"));
     db = new Database(join(dir, "vault.db"));
     store = new TriageStateStore(db);
   });

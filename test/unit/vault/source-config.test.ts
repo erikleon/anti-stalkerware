@@ -12,7 +12,7 @@ describe("SourceConfigStore", () => {
   let store: SourceConfigStore;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-source-config-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-source-config-test-"));
     db = new Database(join(dir, "vault.db"));
     store = new SourceConfigStore(db);
   });

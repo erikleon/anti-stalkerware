@@ -9,7 +9,7 @@ describe("VaultSession", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-vault-session-test-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-vault-session-test-"));
   });
 
   afterEach(() => {

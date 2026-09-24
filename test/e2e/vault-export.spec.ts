@@ -16,7 +16,7 @@ test.describe("Vault and export", () => {
   let userDataDir: string;
 
   test.beforeEach(async () => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-vault-export-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-vault-export-"));
     const exportPath = join(userDataDir, "export.xml");
     writeFileSync(
       exportPath,

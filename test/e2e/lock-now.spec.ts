@@ -18,7 +18,7 @@ test.describe("Lock now", () => {
   let userDataDir: string;
 
   test.beforeEach(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), "antistalker-e2e-locknow-"));
+    userDataDir = mkdtempSync(join(tmpdir(), "docket-e2e-locknow-"));
   });
 
   test.afterEach(() => {

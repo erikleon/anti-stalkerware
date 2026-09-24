@@ -1,4 +1,4 @@
-// A standalone mirror of src/main/api.ts's AntistalkerApi, not an import of
+// A standalone mirror of src/main/api.ts's DocketApi, not an import of
 // it. Importing it directly pulls its whole dependency graph (triage/view,
 // vault/store, types/message, better-sqlite3's types...) into the
 // renderer's own compile, which targets a different module system and
@@ -124,7 +124,7 @@ declare global {
     quarantined: number;
   }
 
-  interface AntistalkerApi {
+  interface DocketApi {
     vault: {
       exists(): Promise<boolean>;
       initialize(passphrase: string): Promise<UnlockResult>;
@@ -186,7 +186,7 @@ declare global {
   }
 
   interface Window {
-    antistalker: AntistalkerApi;
+    docket: DocketApi;
   }
 }
 

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AntistalkerApi } from "./api";
+import type { DocketApi } from "./api";
 
 // Every function here is a thin call to ipcRenderer.invoke against a
 // channel handlers.ts registers — nothing here does any work itself, and
@@ -7,7 +7,7 @@ import type { AntistalkerApi } from "./api";
 // exposed. That keeps contextIsolation/nodeIntegration:false in
 // main/index.ts meaningful: a compromised renderer only gets this exact
 // surface, not the ability to reach arbitrary main-process APIs.
-const api: AntistalkerApi = {
+const api: DocketApi = {
   vault: {
     exists: () => ipcRenderer.invoke("vault:exists"),
     initialize: (passphrase) => ipcRenderer.invoke("vault:initialize", passphrase),
@@ -73,4 +73,4 @@ const api: AntistalkerApi = {
   },
 };
 
-contextBridge.exposeInMainWorld("antistalker", api);
+contextBridge.exposeInMainWorld("docket", api);

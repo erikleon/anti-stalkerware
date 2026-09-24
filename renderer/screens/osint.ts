@@ -13,10 +13,10 @@ export async function renderOsintScreen(container: Element): Promise<void> {
   let unlockedFor: string | undefined;
   let leads: RankedLead[] = [];
 
-  const eligibility = await window.antistalker.osint.eligibleSenders();
+  const eligibility = await window.docket.osint.eligibleSenders();
 
   async function unlock(sender: string): Promise<void> {
-    leads = await window.antistalker.osint.rank(sender);
+    leads = await window.docket.osint.rank(sender);
     unlockedFor = sender;
     draw();
   }

@@ -22,7 +22,7 @@ describe("canUnlockOsint against the real SqliteVaultStore", () => {
   let store: SqliteVaultStore;
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), "antistalker-osint-gate-integration-"));
+    dir = mkdtempSync(join(tmpdir(), "docket-osint-gate-integration-"));
     const metadata = createVaultMetadata("pass");
     key = await new ScryptGcmVaultCrypto(metadata).unlock("pass");
     store = new SqliteVaultStore(new Database(join(dir, "vault.db")), key);
