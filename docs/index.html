@@ -248,8 +248,11 @@
       <div class="n">01</div>
       <h3>Triage</h3>
       <p>Buckets incoming messages into Needs review, Reviewed, and All, so you're not reading every
-        message from someone who's hurting you just to find the ones that matter. Scoring runs
-        entirely on your device — no message ever leaves it for this.</p>
+        message from someone who's hurting you just to find the ones that matter. Previews are
+        blurred until you choose to reveal them, full keyboard control means you never need to touch
+        a mouse, and every flagged thread shows the actual reason — a toxicity score, or a pattern
+        like contact after a boundary you set. Scoring runs entirely on your device — no message
+        ever leaves it for this.</p>
     </div>
 
     <div class="capability">
@@ -296,8 +299,10 @@
   <div class="wrap">
     <h2>Current status — read this before you rely on it</h2>
     <div class="status-list">
-      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Ingest, vault, triage, onboarding<span>iMessage, Android SMS export, and IMAP; a real Electron app you can build and run today.</span></span></div>
-      <div class="status-row"><span class="badge badge--wip">In progress</span><span class="label">Hardened key management<span>Inactivity auto-lock, memory hygiene, and a shared-device / coerced-unlock safety flow are designed but not yet built.</span></span></div>
+      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Ingest, vault, triage, onboarding<span>iMessage, Android SMS export, and IMAP, each through a real connect-scan-select wizard; a real Electron app you can build and run today.</span></span></div>
+      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Keyboard-driven triage<span>Arrow keys or j/k to move, Enter to open, r to mark reviewed, h to hide — one at a time or batch-selected. Previews are blurred by default.</span></span></div>
+      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Boundaries and inactivity auto-lock<span>You author boundaries and tagged phrases from Settings; the vault locks itself after an idle timeout (default 15 minutes) with a manual "Lock now" too.</span></span></div>
+      <div class="status-row"><span class="badge badge--planned">By design</span><span class="label">No coerced-unlock / duress passphrase<span>Considered and turned down — a decoy vault or duress wipe both have real failure modes under pressure. The actual mitigation is the panic-hide hotkey, disclosed on the app's own Support screen. See DESIGN.md.</span></span></div>
       <div class="status-row"><span class="badge badge--planned">Not built</span><span class="label">Live OSINT signal-gathering<span>The gate is real; the actual public-signal collectors behind it are deliberately not built yet — this is the highest-risk part of the project and it's not being rushed.</span></span></div>
       <div class="status-row"><span class="badge badge--planned">Not built</span><span class="label">Packaged releases<span>No signed installer yet. Right now this means cloning the repo and building it yourself — see the README.</span></span></div>
     </div>
@@ -355,6 +360,7 @@
     <div class="links">
       <a href="https://github.com/erikleon/anti-stalkerware">Source on GitHub</a>
       <a href="https://github.com/erikleon/anti-stalkerware/blob/main/README.md">README</a>
+      <a href="https://github.com/erikleon/anti-stalkerware/blob/main/DESIGN.md">Design decisions</a>
       <a href="https://github.com/erikleon/anti-stalkerware/blob/main/TODOS.md">Open items</a>
     </div>
     <p>
