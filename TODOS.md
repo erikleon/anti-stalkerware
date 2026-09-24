@@ -255,3 +255,99 @@ Left open: mac builds are single-arch (whatever `macos-latest`'s runner is
 support would need both `better-sqlite3` and `onnxruntime-node` rebuilt for
 both architectures, which needs actual CI verification, not just local
 guesswork on one machine's arch.
+
+## 14. ~~Cross-platform test coverage~~ DONE 2026-09-24
+
+Prompted by a request to make the app "work across multiple devices and
+platforms." A `/plan-eng-review` pass split that into two questions:
+whether "multiple devices" meant syncing one vault across machines a
+person owns (it doesn't — that's a real, unscoped architecture project
+that conflicts with the no-cloud/no-account design and wasn't what was
+being asked for) versus just making sure the app genuinely works on
+whichever OS someone has (it does, mostly, but nothing had ever verified
+that beyond assumption). Landed on the second, narrower reading.
+
+Added `.github/workflows/test.yml`: typecheck, lint, unit, and e2e (via
+`xvfb-run` on Linux, since Electron needs a display server even for CI)
+across macos-latest/windows-latest/ubuntu-latest, on every push to main
+and every PR — separate from `release.yml`, which only builds and
+publishes installers and never ran the test suite at all.
+
+Auditing the codebase for platform-specific risk before trusting that CI
+surfaced two real, pre-existing bugs, both fixed here rather than just
+flagged:
+
+- **The iMessage onboarding form's pre-filled default path never
+  worked.** `~/Library/Messages/chat.db` was never expanded — Node/
+  Electron don't do shell-style `~` expansion, and there's no shell
+  between a text field and `better-sqlite3`'s `new Database()`. Verified
+  directly: `path.resolve("~/Library/Messages/chat.db")` from this repo
+  returns `<cwd>/~/Library/Messages/chat.db`. Clicking Scan with the
+  untouched default always failed with "no such file or directory," on
+  every install — the existing e2e test only checked the Scan button's
+  enabled/disabled state, never actually clicked Scan on the unedited
+  default. Fixed with a new `expandHome()` in `src/main/paths.ts`, called
+  at the two points a raw `dbPath` enters the main process
+  (`onboarding.ts`'s `sweepImessage`/`connectImessage`); unit-tested
+  directly since it's a plain function with no Electron/DOM dependency.
+- **The panic-hide hotkey's registration failure was silently
+  swallowed.** `globalShortcut.register()`'s boolean return (whether the
+  OS actually granted the shortcut) was discarded. This is a documented
+  weak spot on Linux under Wayland, and can fail on any OS if another app
+  already owns the key combo — and DESIGN.md calls this hotkey "the
+  actual first line of defense." Fixed by threading the boolean through
+  `registerHandlers` to a new `support:hotkeyStatus` IPC channel (not
+  vault-gated, since Support is reachable pre-passphrase), surfaced as a
+  plain status line on the Support screen — the same screen that already
+  explains this hotkey and the no-coerced-unlock decision, rather than a
+  toast that could be seen over someone's shoulder. Verified end to end
+  in `test/e2e/lock-and-triage.spec.ts`.
+
+Left open: mac/Windows/Linux binaries in CI build for whatever
+architecture each GitHub-hosted runner uses (currently arm64 for
+macos-latest) — same single-arch caveat item 13 already logged.
+
+## 15. Instagram DM export adapter
+
+A new `src/ingest/instagram/` adapter (mirroring android-sms's shape:
+adapter.ts + metadata-sweep.ts + reader.ts) parsing the JSON export from
+Instagram's "Download Your Information" tool
+(`your_instagram_activity/messages/inbox/<person>/message_1.json`).
+Closes a real, named harassment vector nothing in the app covers today,
+using an export path that needs no live API/OAuth — consistent with D3/
+D8's no-live-platform-API stance. Instagram gives personal accounts no
+DM-reading API at all; the export is the only legitimate path in.
+
+Two real caveats to design around, not just implement around: deleted/
+unsent messages are NOT in the export (unlike the app's iMessage
+WAL-recovery flagship feature — onboarding copy needs to say so, not
+imply parity), and Meta's own export can take up to 30 days to prepare
+with a 4-day download window, which rules out a "click Scan and go" flow
+like Android SMS's.
+
+Deferred 2026-09-24 (`/plan-eng-review`): scoped and researched, not
+built — "social media, payment apps, email, and others" as one plan was
+3-4 new adapters at once, which is exactly the complexity this kind of
+review is supposed to catch before it starts. No dependency on any other
+open item.
+
+## 16. Payment-app (Venmo/PayPal/Cash App) transaction-note adapter
+
+A new ingest adapter parsing the CSV/statement export these apps already
+offer, extracting the public transaction-note field as message-like
+content — financial harassment via payment notes (threats sent disguised
+as small payment memos) is a real, documented DV-tech-abuse pattern nothing
+in the app covers, and distinct from every existing vector, which are all
+conversational. None of the three expose a harassment-relevant API; all
+three support CSV/statement export instead, matching the existing
+"parse a file the user exported" pattern (Venmo's own CSV export caps at
+90 days, PayPal's at 3 months, though Venmo's separate "Request Your
+Data" full export has no such cap).
+
+Real open question, not just an ingest question: a transaction note is a
+few words, not a conversation, so it needs its own presentation in
+triage rather than being shoehorned into the existing thread view as-is.
+Whoever picks this up should treat that as a small design pass, not an
+implementation detail.
+
+Deferred 2026-09-24 (`/plan-eng-review`), same reasoning as item 15.

@@ -1,0 +1,46 @@
+name: Test
+
+# Runs the full suite (typecheck, lint, unit, e2e) on every OS the app
+# ships an installer for. android-sms and IMAP ingest, and everything in
+# vault/score/triage, have never actually been verified on Windows or
+# Linux before this — only assumed to work because Electron and Node are
+# themselves cross-platform. iMessage ingest is intentionally excluded
+# from that assumption: chat.db only exists on macOS, so its own tests
+# only make sense there, same as they always have.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run build
+
+      - name: e2e (Linux, virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:e2e
+
+      - name: e2e
+        if: runner.os != 'Linux'
+        run: npm run test:e2e
