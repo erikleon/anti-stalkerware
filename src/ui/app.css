@@ -446,9 +446,13 @@
 }
 
 /* A secondary action inside a column layout: size to its label instead of
-   stretching to the column's full width like a primary call to action. */
+   stretching to the column's full width like a primary call to action.
+   flex-shrink: 0 because .content-pane scrolls: once its content is taller
+   than the window, flex shrinks items to fit, and a button with no
+   stretched width to protect it gets its bottom edge clipped off. */
 .btn--inline {
   align-self: flex-start;
+  flex-shrink: 0;
 }
 
 .btn:disabled {
