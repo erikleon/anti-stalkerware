@@ -171,13 +171,32 @@ the abuse threshold, or not), and states plainly that this unlock check is
 own language) — the UI doesn't let the gate imply more certainty than it
 has.
 
-**Unlocked state:** ranked leads only, each showing its supporting signals
-and a confidence label — never a bare name or verdict (D7/D22). A visible
-"generates internet traffic" indicator (small pulsing dot, respects
-`prefers-reduced-motion`) is present the entire time this screen is open,
-per the eng plan's requirement that OSINT's network activity never be
-silent. Explicit copy states results can't enter an evidence export —
-matches the structural code-level barrier, not just a UI suggestion.
+**Unlocked state (verify-mode, decided 2026-09-24 — see TODOS.md item
+18):** a form, not an automatic list. The user names one candidate they
+already suspect — a label plus optionally a known username, email,
+phone, and/or a pasted writing sample — and the app checks only that
+hypothesis against messages already in the vault. There is deliberately
+no "find out who this is" affordance: given a bare identifier with no
+human-supplied candidate, the app has nothing to search. This was a real
+fork considered explicitly — the alternative (search-mode: given a raw
+identifier, go find where else it appears) is the same architecture as a
+people-search site or a Sherlock-style username search, with the vault
+gate limiting who can trigger it but not what a triggered search could
+find about whoever it's pointed at. Rejected for that reason.
+
+Results still never collapse to a bare name or verdict (D7/D22) — each
+checked candidate shows its actual supporting signals and their
+confidence, or plainly says no signals were found. There is no "generates
+internet traffic" indicator on this screen: verify-mode's four shipped
+signal kinds (username/email/phone-reuse, writing-style) run entirely
+against vault data already on the device, so showing a network-activity
+claim here would be false, not just unnecessary — the opposite of the
+transparency this indicator was meant to serve elsewhere in the plan.
+`profile-photo-match` (graph.ts's one still-unbuilt signal kind) is the
+one path that would need a real network surface or facial recognition if
+ever built, and is treated as its own future decision, not bundled here.
+Explicit copy states results can't enter an evidence export — matches the
+structural code-level barrier, not just a UI suggestion.
 
 ## Settings
 

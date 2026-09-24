@@ -39,10 +39,15 @@ tested. The Electron app runs a real flow end to end:
 - **Vault auto-lock** — configurable inactivity timeout (default 15
   minutes, 0 disables it), plus a manual "Lock now."
 - **Export, the OSINT gate, and remove-local-app-data** are real.
-- **No live OSINT signal-gathering collector** exists yet (deliberately
-  deferred — see the plan). The gate is real; the ranked-leads list is
-  honestly empty until a collector is built, rather than showing anything
-  fabricated.
+- **OSINT is verify-mode, not search-mode** — you name a candidate you
+  already suspect (a known username, email, phone, and/or a writing
+  sample you believe is theirs) and the app checks only whether messages
+  already in your vault support that one hypothesis. It cannot look
+  anyone up from a bare identifier; that's deliberate, not a missing
+  feature — see DESIGN.md's OSINT section for why. Every check runs
+  locally, no network call. `profile-photo-match` (facial recognition or
+  image search) is the one signal type this doesn't cover, and is left
+  as a separate, unbuilt decision — see TODOS.md.
 - **No coerced-unlock / duress-passphrase mechanism**, deliberately — see
   DESIGN.md's "Coerced unlock" section for why a decoy vault or a duress
   wipe were both considered and turned down, and what the actual mitigation

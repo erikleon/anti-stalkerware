@@ -470,3 +470,83 @@ benefit. Export is all-or-nothing.
 
 Deferred 2026-09-24 (`/plan-eng-review`, extended after outside-voice
 review reopened D1's scope narrowing).
+
+## 18. ~~OSINT collector: verify-mode~~ DONE 2026-09-24
+
+The first real OSINT collector work since D6/D7/D22 were decided —
+`osint:rank` had always returned `rankCandidates([])`, an honest empty
+state, since no collector existed. Before writing any collector code, the
+core architecture decision got its own explicit pass: **search-mode**
+(given a raw identifier from a vault message, go find where else it
+appears — the same shape as a people-search site or a tool like Sherlock)
+versus **verify-mode** (the user names a candidate they already suspect;
+the app only checks whether vault-held signals support that one
+hypothesis). Went with verify-mode — search-mode is real deanonymization-
+tool architecture with a vault-gate bolted in front of it, and the gate
+restricts who can trigger it, not what it's capable of finding once
+triggered (D22's own comment already says as much: the gate "cannot
+distinguish a genuine abuser from someone who" isn't).
+
+**What shipped**, all four of graph.ts's non-photo signal kinds, all
+zero-network-call, pure local correlation against vault data:
+
+- `src/osint/candidate-input.ts` — what a human supplies (a label plus
+  optional username/email/phone/writing sample), never fetched or
+  searched on their behalf.
+- `src/osint/signals/identifier-reuse.ts` — checks a candidate's
+  username/email/phone against the sender's own identifier (0.9
+  confidence) or against text the sender actually wrote (0.7) — never
+  against any external source.
+- `src/osint/signals/writing-style.ts` — coarse, explainable stylometry
+  (sentence length, word length, function-word frequency, cosine
+  similarity), capped at 0.6 confidence so it can never look as certain
+  as a direct identifier match, and returns nothing rather than a
+  false-confident score under a 40-word minimum on either side.
+- `src/osint/verify.ts` — orchestrates one `CandidateInput` into a scored
+  `Candidate`, checking only the fields the user actually filled in.
+- `osint:checkCandidate` replaces `osint:rank`: still the only
+  `registerGated` channel, still refuses a sender who hasn't crossed the
+  abuse threshold, now actually does something when it doesn't refuse.
+
+**Bug found and fixed along the way**: `rankCandidates()` divided by
+`candidate.signals.length` with no guard — `0/0 = NaN` for any candidate
+with zero matching signals. This was always latently present but
+unreachable while every candidate list was `[]`; verify-mode makes "the
+user's hypothesis wasn't supported by anything" a real, ordinary, expected
+outcome, not an edge case. Fixed to score 0, with its own test.
+
+**UI**: `renderer/screens/osint.ts` rewritten from the unlock-then-see-an-
+empty-list flow to a form (name a candidate, optionally give an
+identifier or paste a writing sample, Check) with results accumulating
+and re-sorting client-side, each one showing its actual supporting
+signals inline — never a bare percentage. The mockup's "generates
+internet traffic" indicator was removed from this flow rather than kept
+for consistency: showing it here would mean claiming network activity
+that verify-mode never has, which is the opposite of the earlier
+panic-hotkey and vault-export fixes' whole point (say plainly what a
+mechanism actually does).
+
+**Verified**: 20 new unit tests (`osint-identifier-reuse.test.ts`,
+`osint-writing-style.test.ts`, `osint-verify.test.ts`, plus 2 added to
+`osint-rank.test.ts` for the NaN fix) plus a new integration test
+(`osint-verify-integration.test.ts`) against a real `SqliteVaultStore`,
+same pattern as `osint-gate-integration.test.ts` — seeds a message with
+an explicit classification override, since there's no real ONNX model in
+this environment to naturally cross the abuse threshold, the same
+disclosed gap the OSINT unlocked-state UI already had. A locked-state e2e
+test (`osint-verify.spec.ts`) covers what's reachable through the real
+app without a classifier; the unlocked verify-mode flow was hand-verified
+live against a running dev instance instead (its own database's
+`crosses_abuse_threshold` flag flipped directly — an unencrypted metadata
+column — to reach eligibility, since nothing in the app itself can set
+that flag without a real classifier).
+
+**Deliberately not built, still a separate future decision**:
+`profile-photo-match` — the one signal kind in graph.ts's model this pass
+didn't touch. Doing it for real means either fetching/hosting images (a
+real network surface verify-mode's other four signals don't have) or
+actual facial recognition, which is legally restricted outright in
+several jurisdictions (Illinois BIPA, the EU AI Act's biometric rules,
+multiple city-level bans) — the single most doxxing-coded capability on
+the list, and not something that should ride along on the back of the
+four safe, local-only ones that just shipped.
