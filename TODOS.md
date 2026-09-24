@@ -213,3 +213,45 @@ to file…" CTA, which is intentionally full-width, but these read as
 heavier than a secondary action probably should. Purely cosmetic, found
 during the same /qa pass; not fixed here since it's a judgment call
 about which buttons should read as primary vs. secondary, not a bug.
+
+## 13. ~~Packaged releases~~ DONE 2026-09-23
+
+Built with electron-builder: `npm run dist:mac/win/linux` locally, or
+`.github/workflows/release.yml` on any `vX.Y.Z` tag push, which builds all
+three on their native runners and attaches the artifacts to a matching
+GitHub Release. Verified locally end to end on macOS — built a real `.dmg`,
+installed the unpacked `.app`, and confirmed it launches without the
+Electron ABI mismatch README already warns about (electron-builder's
+`npmRebuild` step handles the better-sqlite3 rebuild automatically, same
+as `npm start`'s own `prestart` hook).
+
+Two real decisions, not defaults:
+- **Unsigned.** Neither an Apple Developer ID nor a Windows code-signing
+  certificate exists for this project, and both cost money someone would
+  have to commit to. Shipping unsigned means a real, one-time Gatekeeper/
+  SmartScreen warning on first launch instead of a silent block — annoying
+  but honest, and documented in the README rather than hidden. Signing can
+  be added later without changing anything else in the build config.
+- **Product name "Notes."** D5's neutral-name-and-icon requirement finally
+  has somewhere to attach: `package.json`'s `build.productName` is what
+  Electron actually names the installed app (Applications folder, Dock,
+  Start menu, `~/Library/Application Support/<name>` for the vault path)
+  — not the internal `antistalker` package name, which only ever showed up
+  in dev. The icon (`build/icon.svg`, rendered to `.icns`/`.ico`/`.png` via
+  `qlmanage`'s QuickLook thumbnailer — no image-generation tool was needed)
+  reuses the same page-with-lines glyph already on the marketing site.
+
+Found and fixed along the way: electron-builder's default `files` handling
+bundles `onnxruntime-node`'s prebuilt native binary for every platform
+(darwin/linux/win32) into every build, not just the target one — an
+easy-to-miss size bloat specific to packages that ship prebuilt binaries
+per-platform. Fixed with a `files` exclude scoped to each of `mac`/`win`/
+`linux` in the electron-builder config, verified locally by confirming only
+the darwin `.node` file survived in a macOS `--dir` build's
+`app.asar.unpacked`.
+
+Left open: mac builds are single-arch (whatever `macos-latest`'s runner is
+— currently Apple Silicon), not a universal binary; cross-arch/universal
+support would need both `better-sqlite3` and `onnxruntime-node` rebuilt for
+both architectures, which needs actual CI verification, not just local
+guesswork on one machine's arch.

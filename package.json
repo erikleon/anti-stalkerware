@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Local-first desktop tool for triaging abusive messages and preserving evidence.",
+  "author": "antistalker contributors",
+  "homepage": "https://erikleon.github.io/anti-stalkerware/",
+  "repository": "https://github.com/erikleon/anti-stalkerware",
   "main": "dist/main/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p renderer/tsconfig.json && node scripts/copy-ui-assets.mjs",
@@ -19,7 +22,12 @@
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "pretest": "npm run rebuild:node",
     "prestart": "npm run rebuild:electron",
-    "pretest:e2e": "npm run rebuild:electron"
+    "pretest:e2e": "npm run rebuild:electron",
+    "predist": "npm run build",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
@@ -31,6 +39,7 @@
     "@typescript-eslint/parser": "^8.14.0",
     "bplist-creator": "^0.3.0",
     "electron": "^33.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.14.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
@@ -42,5 +51,59 @@
     "imapflow": "^2.0.6",
     "mailparser": "^3.9.28",
     "onnxruntime-node": "^1.30.0"
+  },
+  "build": {
+    "appId": "com.antistalker.notes",
+    "productName": "Notes",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!src/**/*",
+      "!renderer/**/*",
+      "!test/**/*",
+      "!test-results/**/*",
+      "!playwright-report/**/*",
+      "!qa-reports/**/*",
+      "!docs/**/*",
+      "!scripts/**/*",
+      "!build/icon.svg",
+      "!*.md",
+      "!DESIGN.md",
+      "!TODOS.md",
+      "!tsconfig*.json",
+      "!playwright.config.ts",
+      "!vitest.config.ts",
+      "!eslint.config.js",
+      "!.github/**/*",
+      "!dist/**/*.map",
+      "!dist/**/*.d.ts"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "files": ["!node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**"]
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico",
+      "files": ["!node_modules/onnxruntime-node/bin/napi-v6/{linux,darwin}/**"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png",
+      "category": "Office",
+      "files": ["!node_modules/onnxruntime-node/bin/napi-v6/{darwin,win32}/**"]
+    }
   }
 }

@@ -47,6 +47,38 @@ tested. The Electron app runs a real flow end to end:
   wipe were both considered and turned down, and what the actual mitigation
   is instead (the panic-hide hotkey, disclosed plainly on the Support
   screen rather than left undiscovered until someone needs it).
+- **Packaged installers** for macOS, Windows, and Linux — see "Installing a
+  packaged release" below. They're unsigned (no paid signing certificate is
+  wired up), so the OS shows a one-time warning on first launch.
+
+## Installing a packaged release
+
+Every tag pushed as `vX.Y.Z` builds a macOS `.dmg`, a Windows installer, and
+a Linux `.AppImage` via `.github/workflows/release.yml`, and attaches them
+to a matching GitHub Release. Grab the one for your OS from
+[Releases](https://github.com/erikleon/anti-stalkerware/releases).
+
+These builds are unsigned — nobody has paid for an Apple Developer ID or a
+Windows code-signing certificate for this project. That means:
+
+- **macOS**: Gatekeeper blocks the first launch ("can't be opened because
+  Apple cannot check it for malicious software"). Right-click (or
+  Control-click) the app in Finder and choose **Open**, then confirm — this
+  only has to be done once.
+- **Windows**: SmartScreen shows "Windows protected your PC." Click **More
+  info**, then **Run anyway**.
+
+Both warnings exist because the app isn't signed, not because of anything
+specific it does. Building from source (below) sidesteps them entirely
+since you're running code you compiled yourself.
+
+The packaged app installs as **Notes** — a neutral name and icon so it
+doesn't stand out on your device (D5 in the plan; see DESIGN.md). It's the
+same app either way; the disguise is cosmetic, not a separate build.
+
+To build a package yourself instead of downloading one: `npm run dist:mac`,
+`npm run dist:win`, or `npm run dist:linux` (each only works from that OS —
+this doesn't cross-compile). Output lands in `release/`.
 
 ## Setup
 
@@ -101,6 +133,9 @@ renderer/   Renderer TypeScript (compiled separately — browser ES modules,
             vault-export, osint, settings, boundaries, destroy, support.
 docs/       The informational site above (GitHub Pages, served from here on
             main) — not part of the app; nothing in it runs on a user's device
+build/      Packaging assets (icon.icns/.ico/.png, plus the .svg they're
+            generated from) — read by electron-builder's config in
+            package.json's "build" field, not by the app itself
 test/
   unit/     Vitest
   e2e/      Playwright, drives the real compiled Electron app (dist/) —
