@@ -62,24 +62,29 @@ export function renderSupportScreen(container: Element, options: { onBack?: () =
       "There's no hidden second passphrase here that opens a fake or empty vault. Typing the real passphrase opens the real vault; anything else just fails. A decoy that gets noticed can make a dangerous situation worse — so this app doesn't try to have one.",
     ]),
     el("p", {}, [
-      "Your safety comes first. If you're physically forced to unlock a device, it's reasonable to comply. The best defense is not being caught with it open in the first place — press Ctrl+Shift+Esc (⌘+Shift+Esc on a Mac) any time to hide the window instantly, before anyone can demand you unlock it at all.",
+      "Your safety comes first. If you're physically forced to unlock a device, it's reasonable to comply. The best defense is not being caught with it open in the first place — a hotkey can hide the window instantly, before anyone can demand you unlock it at all.",
     ]),
   );
 
-  // Fetched and appended after the fact, never blocking the crisis-resource
-  // content above on an IPC round trip — that content has to render even
-  // if this call is slow or rejects. Silently skipped on failure rather
-  // than shown as an error: an unknown hotkey status isn't a crisis, and
-  // this screen has more important things on it than an error toast.
+  // Which combo, and whether it actually registered, come from main
+  // (main/index.ts's PANIC_HOTKEY/PANIC_HOTKEY_LABEL — the one place
+  // that knows process.platform and what globalShortcut.register()
+  // actually returned) rather than hardcoding a combo here, which would
+  // drift the moment the two disagreed on any platform. Fetched and
+  // appended after the fact, never blocking the crisis-resource content
+  // above on an IPC round trip — that content has to render even if this
+  // call is slow or rejects. Silently skipped on failure rather than
+  // shown as an error: an unknown hotkey status isn't a crisis, and this
+  // screen has more important things on it than an error toast.
   const hotkeyStatusLine = el("p", { style: "font-size:12px;color:var(--text-dim);" }, []);
   pane.append(hotkeyStatusLine);
   window.antistalker.support
     .hotkeyStatus()
-    .then((active) => {
-      hotkeyStatusLine.textContent = active
-        ? "That hotkey is active on this device."
-        : "That hotkey could not be set up on this device (something else may already use it, or your OS doesn't support it) — don't rely on it here. The rest of the app still works normally.";
-      hotkeyStatusLine.style.color = active ? "var(--text-dim)" : "var(--high-fg)";
+    .then(({ registered, label }) => {
+      hotkeyStatusLine.textContent = registered
+        ? `Press ${label} any time — that hotkey is active on this device.`
+        : `${label} could not be set up on this device (something else may already use it, or your OS doesn't support it) — don't rely on it here. The rest of the app still works normally.`;
+      hotkeyStatusLine.style.color = registered ? "var(--text-dim)" : "var(--high-fg)";
     })
     .catch(() => {
       hotkeyStatusLine.remove();

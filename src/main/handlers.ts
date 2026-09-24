@@ -15,6 +15,7 @@ import type {
   DestroyResult,
   ExportHistoryEntry,
   ExportResult,
+  HotkeyStatus,
   ImapConnectionInput,
   OsintSenderEligibility,
   RankedLead,
@@ -70,10 +71,10 @@ function bindGated<Args extends unknown[], Result>(
 }
 
 /** Registers every IPC channel the renderer can call — the concrete implementation behind window.antistalker (api.ts / preload.ts). */
-export function registerHandlers(session: VaultSession, settings: SettingsStore, mainWindow: BrowserWindow, hotkeyRegistered: boolean): void {
+export function registerHandlers(session: VaultSession, settings: SettingsStore, mainWindow: BrowserWindow, hotkeyStatus: HotkeyStatus): void {
   // Not vault-gated — the Support screen reads this from the lock screen
   // too, before any passphrase, same as its other content.
-  bind<[], boolean>(session, "support:hotkeyStatus", async () => hotkeyRegistered);
+  bind<[], HotkeyStatus>(session, "support:hotkeyStatus", async () => hotkeyStatus);
 
   bind<[], boolean>(session, "vault:exists", async () => session.exists());
   bind<[string], UnlockResult>(session, "vault:initialize", async (passphrase) => ({ ok: await session.initialize(passphrase) }));

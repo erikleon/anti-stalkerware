@@ -20,6 +20,12 @@ export interface UnlockResult {
   ok: boolean;
 }
 
+export interface HotkeyStatus {
+  registered: boolean;
+  /** Human-readable, platform-correct combo (e.g. "⌘+Shift+Esc" or "Ctrl+Shift+Alt+H") — computed in main/index.ts, which is the one place that actually knows process.platform and which accelerator string it registered. */
+  label: string;
+}
+
 export interface Settings {
   toastOnTriageAction: boolean;
   /** Minutes of inactivity before the vault auto-locks. 0 disables it. */
@@ -84,8 +90,8 @@ export interface AntistalkerApi {
     onLocked(callback: () => void): () => void;
   };
   support: {
-    /** Whether the panic-hide hotkey actually got registered with the OS at launch — see main/index.ts's registerPanicHotkey. Not vault-gated. */
-    hotkeyStatus(): Promise<boolean>;
+    /** Whether the panic-hide hotkey actually got registered with the OS at launch, and which combo — see main/index.ts's registerPanicHotkey. Not vault-gated. */
+    hotkeyStatus(): Promise<HotkeyStatus>;
   };
   triage: {
     listRows(bucket: Bucket): Promise<TriageRow[]>;

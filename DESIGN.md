@@ -247,11 +247,16 @@ from the main app nav — rather than leaving it undiscovered until
 someone needs it under pressure.
 
 The actual first line of defense is the existing panic-hide hotkey
-(Ctrl+Shift+Esc / Cmd+Shift+Esc, `main/index.ts`): never being caught
+(Cmd+Shift+Esc on macOS; Ctrl+Shift+Alt+H elsewhere — Ctrl+Shift+Esc,
+the obvious Windows analog, is Windows' own reserved Task Manager
+shortcut and confirmed by real CI not to register there, see TODOS item
+14's addendum; `main/index.ts`'s PANIC_HOTKEY): never being caught
 with the vault open is a stronger safety property than anything a
 duress mechanism inside an already-open, already-demanded-open app
-could offer. The Support screen's copy says this directly, and states
-without hedging that if someone is physically forcing a device unlock,
+could offer. The Support screen shows whichever combo actually
+registered on the running platform rather than a hardcoded one, and
+says so plainly if registration failed. It also states without
+hedging that if someone is physically forcing a device unlock,
 complying is the reasonable choice — this app's contents are not worth
 more than the person's safety.
 

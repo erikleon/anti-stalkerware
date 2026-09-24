@@ -11,7 +11,16 @@ import { registerHandlers } from "./handlers";
 // No notifications are ever created anywhere in this app. A notification is
 // exactly the kind of thing that surfaces on a lock screen someone else can see.
 
-const PANIC_HOTKEY = "CommandOrControl+Shift+Escape";
+// Ctrl+Shift+Esc is Windows' own reserved Task Manager shortcut --
+// confirmed by real windows-latest CI (TODOS item 14's addendum) to
+// never actually register there, not just a theoretical collision. Mac
+// keeps Cmd+Shift+Esc (free there); everywhere else gets a combo that
+// isn't OS-reserved. Avoiding a bare Ctrl+Alt pairing deliberately: it
+// maps to AltGr on several European keyboard layouts, a second, subtler
+// collision Electron's own docs warn about -- the third modifier (Shift)
+// avoids that ambiguity.
+const PANIC_HOTKEY = process.platform === "darwin" ? "Cmd+Shift+Escape" : "Control+Shift+Alt+H";
+const PANIC_HOTKEY_LABEL = process.platform === "darwin" ? "⌘+Shift+Esc" : "Ctrl+Shift+Alt+H";
 // How often to check for inactivity, not how long a session can idle —
 // that's Settings' autoLockMinutes, checked fresh every tick since it can
 // change at runtime. 30s keeps the worst-case lag between "idle long
@@ -98,7 +107,7 @@ app.whenReady().then(() => {
 
   mainWindow = createWindow();
   const hotkeyRegistered = registerPanicHotkey(mainWindow);
-  registerHandlers(session, settings, mainWindow, hotkeyRegistered);
+  registerHandlers(session, settings, mainWindow, { registered: hotkeyRegistered, label: PANIC_HOTKEY_LABEL });
   registerAutoLock(session, settings, mainWindow);
 
   app.on("before-quit", () => session.lock());

@@ -340,19 +340,26 @@ this change before calling it done. Real findings, all fixed:
   pure, OS-agnostic byte-parsing tests that run identically everywhere
   (comment corrected, not the tests — they were never wrong).
 
-**Confirmed, not yet acted on:** once the `EBUSY` fix let the Windows CI
-leg actually reach e2e, real data came back: `CommandOrControl+Shift+
+**Confirmed and fixed, same day:** once the `EBUSY` fix let the Windows
+CI leg actually reach e2e, real data came back: `CommandOrControl+Shift+
 Escape` does NOT register on windows-latest — exactly the collision
-Codex flagged (it's Windows' own reserved Task Manager shortcut). This
-isn't a hypothetical anymore. The status-line fix means a Windows user
-is told plainly rather than left assuming a dead hotkey works, but the
-underlying gap is real: right now there is no working panic-hide hotkey
-on Windows at all. `test/e2e/lock-and-triage.spec.ts`'s assertion was
-loosened to accept either status message (the wiring is what it tests,
-not which way a given OS resolves) rather than papering over this with
-an assumption. A Windows-specific alternate combo is a real product
-decision (see the corresponding TODOS discussion / commit), not
-something to pick unilaterally.
+Codex flagged (it's Windows' own reserved Task Manager shortcut), not a
+hypothetical. `main/index.ts`'s `PANIC_HOTKEY` is now
+platform-conditional: `Cmd+Shift+Escape` stays on macOS (free there),
+everywhere else gets `Control+Shift+Alt+H` — deliberately not a bare
+Ctrl+Alt combo, which Electron's own docs warn maps to AltGr on several
+European keyboard layouts. The Support screen shows whichever combo
+actually registered (via a new `HotkeyStatus { registered, label }`
+returned by `support:hotkeyStatus`, computed in main so the label can
+never drift from what was actually registered) instead of a hardcoded
+string, and says so plainly either way.
+`test/e2e/lock-and-triage.spec.ts`'s assertion accepts either outcome —
+it tests that the wiring renders a status at all, not which way a given
+OS resolves the registration attempt, since that's genuinely
+OS-dependent and the point of the fix is handling both gracefully.
+Not independently verified that `Control+Shift+Alt+H` itself is
+collision-free on every real Windows machine — only that it isn't one
+of the well-known OS-reserved combos, which is what actually broke.
 
 A new `src/ingest/instagram/` adapter (mirroring android-sms's shape:
 adapter.ts + metadata-sweep.ts + reader.ts) parsing the JSON export from

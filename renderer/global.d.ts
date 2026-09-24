@@ -48,6 +48,11 @@ declare global {
     ok: boolean;
   }
 
+  interface HotkeyStatus {
+    registered: boolean;
+    label: string;
+  }
+
   interface Settings {
     toastOnTriageAction: boolean;
     autoLockMinutes: number;
@@ -129,7 +134,7 @@ declare global {
       onLocked(callback: () => void): () => void;
     };
     support: {
-      hotkeyStatus(): Promise<boolean>;
+      hotkeyStatus(): Promise<HotkeyStatus>;
     };
     triage: {
       listRows(bucket: Bucket): Promise<TriageRow[]>;
