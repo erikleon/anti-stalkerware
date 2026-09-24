@@ -142,6 +142,40 @@ declare global {
     quarantined: number;
   }
 
+  interface BlocklistSummary {
+    status: "ok" | "not-found" | "unsupported-platform" | "error";
+    blockedCount: number;
+    skipped: number;
+    error?: string;
+  }
+
+  interface SweepRow extends MetadataSweepResult {
+    blockedOnThisMac: boolean;
+    knownAccountLabel?: string;
+  }
+
+  interface SweepResponse {
+    rows: SweepRow[];
+    blocklist: BlocklistSummary;
+  }
+
+  type KnownAccountKind = "phone" | "email" | "username";
+  type KnownAccountOrigin = "manual" | "macos-blocklist" | "instagram-blocklist";
+
+  interface StoredKnownAccount {
+    id: string;
+    personLabel: string;
+    kind: KnownAccountKind;
+    value: string;
+    origin: KnownAccountOrigin;
+    addedAt: Date;
+  }
+
+  interface KnownAccountImportResult extends BlocklistSummary {
+    added: number;
+    alreadyKnown: number;
+  }
+
   interface DocketApi {
     vault: {
       exists(): Promise<boolean>;
@@ -164,6 +198,14 @@ declare global {
     osint: {
       eligibleSenders(): Promise<OsintSenderEligibility[]>;
       checkCandidate(sender: string, candidate: CandidateInput): Promise<RankedLead>;
+      compareKnownAccounts(sender: string): Promise<RankedLead[]>;
+    };
+    knownAccounts: {
+      list(): Promise<StoredKnownAccount[]>;
+      add(personLabel: string, kind: KnownAccountKind, value: string): Promise<StoredKnownAccount>;
+      setPersonLabel(id: string, personLabel: string): Promise<void>;
+      remove(id: string): Promise<void>;
+      importMacosBlocklist(): Promise<KnownAccountImportResult>;
     };
     vaultExport: {
       listAll(): Promise<WireMessage[]>;
@@ -192,9 +234,10 @@ declare global {
     };
     onboarding: {
       pickFile(): Promise<string | undefined>;
-      sweepImessage(dbPath: string): Promise<MetadataSweepResult[]>;
-      sweepAndroidSms(exportFilePath: string): Promise<MetadataSweepResult[]>;
-      sweepImap(connection: ImapConnectionInput): Promise<MetadataSweepResult[]>;
+      sweepImessage(dbPath: string): Promise<SweepResponse>;
+      sweepAndroidSms(exportFilePath: string): Promise<SweepResponse>;
+      sweepImap(connection: ImapConnectionInput): Promise<SweepResponse>;
+      saveBlockedAsKnown(identifiers: string[]): Promise<{ added: number; alreadyKnown: number }>;
       connectImessage(dbPath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
       connectAndroidSms(exportFilePath: string, selectedIdentifiers: string[]): Promise<SyncResult>;
       connectImap(connection: ImapConnectionInput, selectedIdentifiers: string[]): Promise<SyncResult>;

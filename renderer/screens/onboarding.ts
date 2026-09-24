@@ -18,9 +18,15 @@ const SOURCE_LABEL: Record<SourceKind, string> = {
 export async function renderOnboardingScreen(container: Element, source: SourceKind, onFinish: () => void): Promise<void> {
   let step: WizardStep = "connect";
   let error: string | undefined;
-  let sweepResults: MetadataSweepResult[] = [];
+  let sweepResults: SweepRow[] = [];
+  let blocklist: BlocklistSummary | undefined;
   const selected = new Set<string>();
   let syncResult: SyncResult | undefined;
+  // Blocked senders the user selects are also saved as known accounts,
+  // unless they untick this — the baseline OSINT compares new senders to.
+  let saveBlockedAsKnown = true;
+  let savedKnown: { added: number; alreadyKnown: number } | undefined;
+  let saveKnownError: string | undefined;
 
   // Form fields, only the ones relevant to `source` are ever read.
   let dbPath = source === "imessage" ? "~/Library/Messages/chat.db" : "";
@@ -45,12 +51,13 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
   async function scan(): Promise<void> {
     error = undefined;
     try {
+      let response: SweepResponse;
       if (source === "imessage") {
-        sweepResults = await window.docket.onboarding.sweepImessage(dbPath);
+        response = await window.docket.onboarding.sweepImessage(dbPath);
       } else if (source === "android-sms") {
-        sweepResults = await window.docket.onboarding.sweepAndroidSms(exportFilePath);
+        response = await window.docket.onboarding.sweepAndroidSms(exportFilePath);
       } else {
-        sweepResults = await window.docket.onboarding.sweepImap({
+        response = await window.docket.onboarding.sweepImap({
           host: imapHost,
           port: imapPort,
           secure: imapSecure,
@@ -59,7 +66,15 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
           mailbox: imapMailbox,
         });
       }
-      sweepResults.sort((a, b) => b.messageCount - a.messageCount);
+      blocklist = response.blocklist;
+      // Blocked and already-known senders first, then by volume. They start
+      // selected: their messages from before the block are what lets docket
+      // recognize the same person writing from a new number later.
+      sweepResults = response.rows.sort(
+        (a, b) => Number(isFlagged(b)) - Number(isFlagged(a)) || b.messageCount - a.messageCount,
+      );
+      selected.clear();
+      for (const row of sweepResults) if (isFlagged(row)) selected.add(row.sender);
       step = "before-you-continue";
     } catch (err) {
       error = ipcErrorMessage(err);
@@ -86,6 +101,19 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
     } catch (err) {
       error = ipcErrorMessage(err);
       step = "select";
+      draw();
+      return;
+    }
+
+    // The import already succeeded at this point, so a failure here is
+    // reported on the done screen, not by sending the user back a step.
+    const blockedIds = sweepResults.filter((r) => r.blockedOnThisMac && selected.has(r.sender)).map((r) => r.sender);
+    if (saveBlockedAsKnown && blockedIds.length > 0) {
+      try {
+        savedKnown = await window.docket.onboarding.saveBlockedAsKnown(blockedIds);
+      } catch (err) {
+        saveKnownError = ipcErrorMessage(err);
+      }
     }
     draw();
   }
@@ -210,6 +238,20 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         `The next screen lists everyone we found in your ${SOURCE_LABEL[source]} — ${sweepResults.length} sender${sweepResults.length === 1 ? "" : "s"}. Nothing is added to your vault yet. You'll choose exactly who to include.`,
       ]),
     );
+    const blockedHere = sweepResults.filter((r) => r.blockedOnThisMac).length;
+    const knownHere = sweepResults.filter((r) => r.knownAccountLabel !== undefined && !r.blockedOnThisMac).length;
+    if (blockedHere > 0 || knownHere > 0) {
+      const parts: string[] = [];
+      if (blockedHere > 0) parts.push(`${blockedHere} ${blockedHere === 1 ? "is" : "are"} on your block list on this Mac`);
+      if (knownHere > 0) parts.push(`${knownHere} ${knownHere === 1 ? "is" : "are"} already in your known accounts`);
+      pane.append(
+        el("p", {}, [
+          `Of these, ${parts.join(" and ")}. They're listed first and already selected. What they sent before you blocked them helps docket recognize the same person if they come back from a new number or account.`,
+        ]),
+      );
+    }
+    const blocklistNote = describeBlocklist(blocklist, blockedHere);
+    if (blocklistNote) pane.append(el("p", { style: "font-size:12px;" }, [blocklistNote]));
     const ready = el("button", { type: "button", class: "btn btn--primary" }, ["I'm ready"]);
     ready.addEventListener("click", () => {
       step = "select";
@@ -249,10 +291,13 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
           else selected.delete(r.sender);
           draw();
         });
+        const title = el("div", { class: "list-block-row-title", style: "display:flex;align-items:center;gap:8px;flex-wrap:wrap;" }, [r.sender]);
+        if (r.blockedOnThisMac) title.append(el("span", { class: "badge badge--medium" }, ["Blocked on this Mac"]));
+        if (r.knownAccountLabel !== undefined) title.append(el("span", { class: "provenance-pill" }, [`Known: ${r.knownAccountLabel}`]));
         row.append(
           cb,
           el("div", {}, [
-            el("div", { class: "list-block-row-title" }, [r.sender]),
+            title,
             el("div", { class: "list-block-row-sub" }, [
               `${r.messageCount} message${r.messageCount === 1 ? "" : "s"} · ${r.firstSeenAt.toLocaleDateString()} – ${r.lastSeenAt.toLocaleDateString()}`,
             ]),
@@ -261,6 +306,17 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
         list.append(row);
       }
       pane.append(list);
+    }
+
+    if (sweepResults.some((r) => r.blockedOnThisMac && selected.has(r.sender))) {
+      const saveRow = el("label", { style: "display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;" });
+      const saveCb = el("input", { type: "checkbox" }) as HTMLInputElement;
+      saveCb.checked = saveBlockedAsKnown;
+      saveCb.style.minWidth = "24px";
+      saveCb.style.minHeight = "24px";
+      saveCb.addEventListener("change", () => (saveBlockedAsKnown = saveCb.checked));
+      saveRow.append(saveCb, el("span", {}, ["Also save the blocked senders I selected as known accounts, so OSINT can compare new senders with them"]));
+      pane.append(saveRow);
     }
 
     const addBtn = el("button", { type: "button", class: "btn btn--primary" }, [`Add ${selected.size} selected`]) as HTMLButtonElement;
@@ -282,6 +338,17 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
           : "Done.",
       ]),
     );
+    if (savedKnown) {
+      const total = savedKnown.added + savedKnown.alreadyKnown;
+      pane.append(
+        el("p", {}, [
+          `Saved ${total} blocked sender${total === 1 ? "" : "s"} as known accounts${savedKnown.alreadyKnown > 0 ? ` (${savedKnown.alreadyKnown} already there)` : ""}. Group them by person under OSINT → Known accounts.`,
+        ]),
+      );
+    }
+    if (saveKnownError) {
+      pane.append(el("p", { style: "color:var(--high-fg);" }, [`Your messages were imported, but saving blocked senders as known accounts failed: ${saveKnownError}`]));
+    }
     const done = el("button", { type: "button", class: "btn btn--primary" }, ["Back to settings"]);
     done.addEventListener("click", onFinish);
     pane.append(done);
@@ -310,6 +377,28 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
   }
 
   draw();
+}
+
+function isFlagged(row: SweepRow): boolean {
+  return row.blockedOnThisMac || row.knownAccountLabel !== undefined;
+}
+
+/** One line about the block list itself, only when there's something the user should know. */
+function describeBlocklist(blocklist: BlocklistSummary | undefined, blockedHere: number): string | undefined {
+  if (!blocklist) return undefined;
+  switch (blocklist.status) {
+    case "error":
+      return `Couldn't read this Mac's block list (${blocklist.error ?? "unknown error"}). You can still choose senders by hand.`;
+    case "ok": {
+      const notHere = blocklist.blockedCount - blockedHere;
+      const skipped = blocklist.skipped > 0 ? ` ${blocklist.skipped} block list entr${blocklist.skipped === 1 ? "y" : "ies"} couldn't be read.` : "";
+      return notHere > 0 || skipped
+        ? `${notHere > 0 ? `${notHere} other blocked contact${notHere === 1 ? " has" : "s have"} no messages here. You can add them from OSINT → Known accounts.` : ""}${skipped}`.trim()
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
 }
 
 function connectHelpText(source: SourceKind): string {
