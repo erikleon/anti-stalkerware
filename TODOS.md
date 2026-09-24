@@ -645,3 +645,60 @@ hand against a built app with the abuse flag set directly in a scratch
 vault (no classifier model in this environment): the new number scored
 65% for the blocked person, from a phone mention (70%) and writing style
 (60%).
+
+## 20. ~~Local calendar dates with strictdatetime~~ DONE 2026-09-24
+
+Added `strictdatetime` (1.3.0) behind a small main-process wrapper,
+`src/time/local-time.ts`. It's used only where docket needs a person's
+local calendar; plain instants still use `Date`. The renderer has no
+bundler, so it sends "YYYY-MM-DD" strings and the main process does the
+time-zone work.
+
+- **Boundary dates were wrong west of UTC (evidence bug).** The form did
+  `new Date("2026-09-24")`, which is UTC midnight: 8 PM on Sep 23 in New
+  York. The boundary showed as "9/23", and a message sent at 9 PM on Sep
+  23 was flagged "sent after boundary". Reproduced with `TZ=America/
+  New_York`. Boundaries now start at local midnight (`startOfLocalDay`),
+  and the store keeps the picked date and zone (`set_on`, `time_zone`).
+  Rows the old form wrote (exactly UTC midnight, no `set_on`) are
+  repaired once when the vault opens. The form's default date was also
+  the UTC date (already tomorrow on a US evening) and now is the local
+  date.
+- **Evidence export** writes `sentAtLocal`
+  ("2026-09-23T21:00:00.000-04:00[America/New_York]") next to the UTC
+  `sentAt`, plus the export's `timeZone`.
+- **OSINT** dates a match by the local day, not the UTC day.
+- **IMAP** (not strictdatetime, found while auditing dates): a message
+  with no `Date` header was dated at import time, and so was one whose
+  header mailparser couldn't read — mailparser returns the current time
+  in that case. Both are now quarantined with the reason.
+- CI moved from Node 20 (end of life April 2026) to Node 22.
+
+Checked in a packaged macOS build: the module loads from `app.asar` and
+gives the right answer on Electron's Node 20.18.
+
+Issues filed on strictdatetime while integrating:
+[#2](https://github.com/erikleon/strictdatetime/issues/2) (bug: unit
+boundaries follow `disambiguation`, so "earlier"/"later" can put an
+instant in the wrong day; docket uses "compatible", the one policy that's
+right in both directions),
+[#3](https://github.com/erikleon/strictdatetime/issues/3) (start of a
+PlainDate in a zone),
+[#4](https://github.com/erikleon/strictdatetime/issues/4) (date part of
+a PlainDateTime),
+[#5](https://github.com/erikleon/strictdatetime/issues/5) (strict RFC
+5322 date parser, which would replace the IMAP `Date.parse` fallback).
+
+## 21. Upgrade Electron off Node 20
+
+Electron 33 ships Node 20.18, which reached end of life in April 2026.
+strictdatetime declares `node >=22`; it works on 20.18 (tested), but
+that's outside its supported range. A current Electron (Node 22 or
+later) fixes both. Needs `better-sqlite3` and `onnxruntime-node`
+rebuilt and the full e2e suite on all three CI runners, so it's its own
+change.
+
+Also seen during this work: `crypto.test.ts`'s timing test ("wrong
+passphrase and a corrupted canary take roughly the same time") failed
+once under full parallel load and passed 3/3 alone. It compares two
+wall-clock durations, so it's load-sensitive.

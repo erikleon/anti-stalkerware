@@ -39,13 +39,14 @@ export function localTimeZone(): string {
 export function startOfLocalDay(isoDate: string, timeZone: string): Date {
   const date = parsePlainDate(isoDate);
   // Noon exists on every calendar day in every zone, so resolving it never
-  // needs a policy; the day boundary is then found from there.
+  // needs a policy; the day boundary is then found from there. A one-call
+  // version is requested in https://github.com/erikleon/strictdatetime/issues/3
   const noon = resolveZonedDateTime({ ...date, hour: 12, minute: 0, second: 0, millisecond: 0 }, timeZone);
   // "compatible" is the only policy that gives the first instant of the day
   // both when midnight is skipped (it moves forward to the first real time)
   // and when midnight happens twice (it takes the first one). "earlier" and
   // "later" each put part of one day inside the next in one of those cases:
-  // https://github.com/erikleon/strictdatetime/issues (day-boundary report)
+  // https://github.com/erikleon/strictdatetime/issues/2
   const start = startOfZonedDateTimeUnit(noon, "day", { disambiguation: "compatible" });
   return new Date(start.epochMilliseconds);
 }
