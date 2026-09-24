@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -19,7 +20,7 @@ describe("SqliteIntegrityLog", () => {
 
   afterEach(() => {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("round-trips an event", async () => {

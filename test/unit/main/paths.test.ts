@@ -12,6 +12,10 @@ describe("expandHome", () => {
     expect(expandHome("~/Library/Messages/chat.db")).toBe(join(homedir(), "Library/Messages/chat.db"));
   });
 
+  it("expands ~\\... (Windows-style) the same way", () => {
+    expect(expandHome("~\\Documents\\export.xml")).toBe(join(homedir(), "Documents\\export.xml"));
+  });
+
   it("leaves an already-absolute path unchanged", () => {
     expect(expandHome("/Users/someone/Library/Messages/chat.db")).toBe("/Users/someone/Library/Messages/chat.db");
   });

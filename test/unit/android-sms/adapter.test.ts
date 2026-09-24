@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AndroidSmsAdapter } from "../../../src/ingest/android-sms/adapter";
@@ -21,7 +22,7 @@ describe("AndroidSmsAdapter", () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("reads every message with no checkpoint", async () => {

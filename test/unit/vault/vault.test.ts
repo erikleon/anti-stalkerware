@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { initializeVault, openVault, vaultExists, VaultMetadataError, type Vault } from "../../../src/vault/vault";
@@ -15,7 +16,7 @@ describe("initializeVault + openVault", () => {
   afterEach(() => {
     vault?.close();
     vault = undefined;
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("opens a freshly initialized vault with the same passphrase", async () => {

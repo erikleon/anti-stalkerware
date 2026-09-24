@@ -4,9 +4,11 @@ name: Test
 # ships an installer for. android-sms and IMAP ingest, and everything in
 # vault/score/triage, have never actually been verified on Windows or
 # Linux before this — only assumed to work because Electron and Node are
-# themselves cross-platform. iMessage ingest is intentionally excluded
-# from that assumption: chat.db only exists on macOS, so its own tests
-# only make sense there, same as they always have.
+# themselves cross-platform. The whole suite, including iMessage's own
+# sqlite-format/WAL-parsing unit tests, runs identically on all three:
+# those tests parse byte buffers, with no macOS API dependency, even
+# though the feature they support (reading a real chat.db) only exists
+# on macOS. Nothing here is OS-conditional at the test-selection level.
 
 on:
   push:

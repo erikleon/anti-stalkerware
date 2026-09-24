@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -32,7 +33,7 @@ describe("recoverRowsFromWal — against a real SQLite WAL file", () => {
 
   afterEach(() => {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("recovers a row's content directly from a live WAL file", () => {

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -42,7 +43,7 @@ describe("ImessageAdapter", () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("acquires messages scoped to the selected threads, honoring a checkpoint", async () => {
@@ -87,7 +88,7 @@ describe("watchForRetractions", () => {
 
   afterEach(() => {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("reports a recovered pre-retraction row once the sender unsends a message", async () => {

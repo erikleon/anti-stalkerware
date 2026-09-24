@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { destroyVault, DESTROY_CONFIRMATION_PHRASE, DESTROY_DISCLOSURE_TEXT } from "../../../src/vault/destroy";
@@ -15,7 +16,7 @@ describe("destroyVault", () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("removes the vault's own files when the confirmation matches", async () => {

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SettingsStore } from "../../../src/main/settings-store";
@@ -14,7 +15,7 @@ describe("SettingsStore", () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("returns defaults when no file exists yet", async () => {

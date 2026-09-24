@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -50,7 +51,7 @@ describe("SqliteVaultStore", () => {
 
   afterEach(() => {
     store.close();
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("round-trips a message through append and get", async () => {

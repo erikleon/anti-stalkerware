@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { VaultSession } from "../../src/main/vault-session";
@@ -12,7 +13,7 @@ describe("VaultSession", () => {
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("reports no vault as not existing and not unlocked", () => {

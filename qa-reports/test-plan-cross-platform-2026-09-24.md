@@ -30,10 +30,11 @@ src/main/onboarding.ts
         same disclosed gap as the rest of iMessage onboarding (TODOS #6)
   connectImessage(vault, dbPath, ids) -> expandHome(dbPath), saved into
     SourceConfig so syncNow() never needs to expand it again
-    └── [TESTED unit, indirect] onboarding.test.ts's existing
-        connectImessage case uses an already-absolute path, so expandHome
-        is a no-op there — doesn't exercise the ~ branch directly, but
-        confirms the non-~ path still round-trips correctly
+    └── [TESTED unit] onboarding.test.ts's "expands a ~ dbPath before
+        saving it, not just before opening it" case asserts the SAVED
+        config holds the expanded path, not the literal "~/..." string —
+        added after an outside-voice review flagged the original
+        indirect-only coverage here as overstated
 
 src/main/index.ts
   registerPanicHotkey(window) -> boolean (was: void, discarded)

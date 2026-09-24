@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { initializeVault, openVault, type Vault } from "../../../src/vault/vault";
 import { connectAndroidSms, connectImapSource, connectImessage, disconnect, syncNow } from "../../../src/main/onboarding";
@@ -21,7 +22,7 @@ describe("onboarding orchestration", () => {
 
   afterEach(() => {
     vault.close();
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("connectAndroidSms saves the config and ingests the selected addresses", async () => {
@@ -106,5 +107,17 @@ describe("onboarding orchestration", () => {
     const dbPath = join(dir, "nonexistent-chat.db");
     await expect(connectImessage(vault, dbPath, ["+15551234567"])).rejects.toThrow();
     expect(vault.sourceConfig.get("imessage")).toEqual({ source: "imessage", dbPath, selectedIdentifiers: ["+15551234567"] });
+  });
+
+  it("connectImessage expands a ~ dbPath before saving it, not just before opening it", async () => {
+    // Regression coverage for the bug expandHome fixed: the saved config
+    // (what syncNow() re-reads later) has to be the real, already-expanded
+    // path too, not the literal "~/..." the onboarding form pre-fills.
+    await expect(connectImessage(vault, "~/antistalker-test-nonexistent-chat.db", ["+15551234567"])).rejects.toThrow();
+    expect(vault.sourceConfig.get("imessage")).toEqual({
+      source: "imessage",
+      dbPath: join(homedir(), "antistalker-test-nonexistent-chat.db"),
+      selectedIdentifiers: ["+15551234567"],
+    });
   });
 });

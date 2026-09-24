@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, appendFileSync } from "node:fs";
+import { removeTestDir } from "../../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { watchWalFile, type WalWatcherHandle } from "../../../src/ingest/imessage/wal-watcher";
@@ -25,7 +26,7 @@ describe("watchWalFile", () => {
 
   afterEach(() => {
     handle?.stop();
-    rmSync(dir, { recursive: true, force: true });
+    removeTestDir(dir);
   });
 
   it("notifies when the WAL file changes", async () => {
