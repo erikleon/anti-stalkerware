@@ -16,6 +16,7 @@ import type { Message, SourceKind } from "../types/message";
 import * as onboarding from "./onboarding";
 import { readInstagramBlocked } from "../ingest/instagram/blocked";
 import { expandHome } from "./paths";
+import { localTimeZone } from "../time/local-time";
 import type {
   CandidateInput,
   DestroyResult,
@@ -237,8 +238,8 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
   bind<[SourceKind], void>(session, "onboarding:disconnect", async (source) => onboarding.disconnect(requireVault(session), source));
 
   bind<[], StoredBoundary[]>(session, "userContext:listBoundaries", async () => requireVault(session).userContext.listBoundaries());
-  bind<[string, Date, string | undefined], StoredBoundary>(session, "userContext:addBoundary", async (description, setAt, appliesToSender) =>
-    requireVault(session).userContext.addBoundary({ description, setAt, ...(appliesToSender ? { appliesToSender } : {}) }),
+  bind<[string, string, string | undefined], StoredBoundary>(session, "userContext:addBoundary", async (description, setOn, appliesToSender) =>
+    requireVault(session).userContext.addBoundaryOnDate(description, setOn, localTimeZone(), appliesToSender),
   );
   bind<[string], void>(session, "userContext:removeBoundary", async (id) => requireVault(session).userContext.removeBoundary(id));
   bind<[], StoredTaggedPhrase[]>(session, "userContext:listTaggedPhrases", async () => requireVault(session).userContext.listTaggedPhrases());

@@ -67,6 +67,8 @@ declare global {
   interface StoredBoundary {
     id: string;
     setAt: Date;
+    setOn?: string;
+    timeZone?: string;
     description: string;
     appliesToSender?: string;
   }
@@ -223,7 +225,7 @@ declare global {
     };
     userContext: {
       listBoundaries(): Promise<StoredBoundary[]>;
-      addBoundary(description: string, setAt: Date, appliesToSender?: string): Promise<StoredBoundary>;
+      addBoundary(description: string, setOn: string, appliesToSender?: string): Promise<StoredBoundary>;
       removeBoundary(id: string): Promise<void>;
       listTaggedPhrases(): Promise<StoredTaggedPhrase[]>;
       addTaggedPhrase(phrase: string, note: string): Promise<StoredTaggedPhrase>;

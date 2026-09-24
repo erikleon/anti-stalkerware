@@ -8,6 +8,7 @@ import {
   detectUserTaggedPhrases,
   StructuralSignalDetector,
 } from "../../../src/score/signals";
+import { startOfLocalDay } from "../../../src/time/local-time";
 import type { Message } from "../../../src/types/message";
 
 let counter = 0;
@@ -54,6 +55,29 @@ describe("detectContactAfterBoundary", () => {
     };
     const otherSender = msg({ sender: "someone-else@example.com", sentAt: new Date("2026-01-02T00:00:00Z") });
     expect(detectContactAfterBoundary([otherSender], [boundary])).toHaveLength(0);
+  });
+});
+
+describe("detectContactAfterBoundary with a boundary picked as a local date", () => {
+  // Regression: the boundary form used to turn "2026-09-24" into UTC
+  // midnight, which in New York is 8 PM on Sep 23, so a message sent at
+  // 9 PM on Sep 23 was flagged as sent after a boundary set on Sep 24.
+  const boundary = {
+    setAt: startOfLocalDay("2026-09-24", "America/New_York"),
+    setOn: "2026-09-24",
+    timeZone: "America/New_York",
+    description: "told them to stop",
+  };
+
+  it("does not flag a message from the evening before the picked date", () => {
+    const evening = msg({ sentAt: new Date("2026-09-23T21:00:00-04:00") });
+    expect(detectContactAfterBoundary([evening], [boundary])).toHaveLength(0);
+  });
+
+  it("flags a message from the picked date, naming the date as the user entered it", () => {
+    const morning = msg({ sentAt: new Date("2026-09-24T08:00:00-04:00") });
+    const [signal] = detectContactAfterBoundary([morning], [boundary]);
+    expect(signal?.detail).toBe('Sent after boundary "told them to stop" (set 2026-09-24)');
   });
 });
 

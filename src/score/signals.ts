@@ -31,7 +31,12 @@ export interface Signal {
 
 /** A boundary the user has explicitly marked, e.g. "told them to stop contacting me on 2026-08-01". */
 export interface UserBoundary {
+  /** The first instant the boundary applies from: the start of `setOn` in `timeZone` when those are set. */
   setAt: Date;
+  /** The calendar date the user picked ("2026-08-01"), kept as they entered it. */
+  setOn?: string;
+  /** The IANA time zone `setOn` was read in. */
+  timeZone?: string;
   description: string;
   /** If set, this boundary only applies to messages from this sender. Unset means it applies to any non-self message after setAt. */
   appliesToSender?: string;
@@ -68,7 +73,7 @@ export function detectContactAfterBoundary(messages: Message[], boundaries: User
         signals.push({
           kind: "contact-after-marked-boundary",
           message,
-          detail: `Sent after boundary "${boundary.description}" (set ${boundary.setAt.toISOString()})`,
+          detail: `Sent after boundary "${boundary.description}" (set ${boundary.setOn ?? boundary.setAt.toISOString()})`,
         });
         break; // one flag per message is enough even if multiple boundaries apply
       }

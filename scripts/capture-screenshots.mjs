@@ -80,7 +80,7 @@ async function shot(window, name) {
   const { app, window } = await open();
   await window.evaluate(
     async ([sender]) => {
-      await window.docket.userContext.addBoundary("Told them to only message me about pickup times", new Date("2024-02-06T12:00:00"), sender);
+      await window.docket.userContext.addBoundary("Told them to only message me about pickup times", "2024-02-06", sender);
       await window.docket.userContext.addTaggedPhrase("can't hide", "Said the same thing right before I moved");
     },
     [NEW_NUMBER],

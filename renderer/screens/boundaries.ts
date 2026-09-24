@@ -1,7 +1,10 @@
 import { el, mount } from "../dom.js";
 
+/** Today's date on this machine's own calendar. toISOString() would give the UTC date, which is already tomorrow on a US evening. */
 function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 /**
@@ -43,7 +46,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
           el("div", {}, [
             el("div", { class: "list-block-row-title" }, [b.description]),
             el("div", { class: "list-block-row-sub" }, [
-              `Set ${b.setAt.toLocaleDateString()}${b.appliesToSender ? ` · only from ${b.appliesToSender}` : ""}`,
+              `Set ${b.setOn ?? b.setAt.toLocaleDateString()}${b.appliesToSender ? ` · only from ${b.appliesToSender}` : ""}`,
             ]),
           ]),
         );
@@ -66,9 +69,9 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
     const addBoundaryBtn = el("button", { type: "button", class: "btn btn--inline" }, ["Add boundary"]);
     addBoundaryBtn.addEventListener("click", async () => {
       if (descInput.value.trim().length === 0) return;
-      const setAt = dateInput.value ? new Date(dateInput.value) : new Date();
+      const setOn = dateInput.value || todayInputValue();
       const sender = senderInput.value.trim();
-      await window.docket.userContext.addBoundary(descInput.value.trim(), setAt, sender.length > 0 ? sender : undefined);
+      await window.docket.userContext.addBoundary(descInput.value.trim(), setOn, sender.length > 0 ? sender : undefined);
       descInput.value = "";
       senderInput.value = "";
       await refresh();

@@ -162,8 +162,8 @@ export interface DocketApi {
   };
   userContext: {
     listBoundaries(): Promise<StoredBoundary[]>;
-    /** setAt is a real, user-picked date, not "now" — a boundary is often logged after the fact. */
-    addBoundary(description: string, setAt: Date, appliesToSender?: string): Promise<StoredBoundary>;
+    /** setOn is a real, user-picked calendar date ("YYYY-MM-DD"), not "now" — a boundary is often logged after the fact. The boundary starts at the beginning of that day in this machine's time zone. */
+    addBoundary(description: string, setOn: string, appliesToSender?: string): Promise<StoredBoundary>;
     removeBoundary(id: string): Promise<void>;
     listTaggedPhrases(): Promise<StoredTaggedPhrase[]>;
     addTaggedPhrase(phrase: string, note: string): Promise<StoredTaggedPhrase>;

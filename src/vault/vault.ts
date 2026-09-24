@@ -10,6 +10,7 @@ import { TriageStateStore } from "./triage-state";
 import { SourceConfigStore } from "./source-config";
 import { UserContextStore } from "./user-context";
 import { KnownAccountStore } from "./known-accounts";
+import { localTimeZone } from "../time/local-time";
 
 const METADATA_FILENAME = "vault.meta.json";
 const DB_FILENAME = "vault.db";
@@ -81,7 +82,7 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
   const integrityLog = new SqliteIntegrityLog(db);
   const triageState = new TriageStateStore(db);
   const sourceConfig = new SourceConfigStore(db);
-  const userContext = new UserContextStore(db);
+  const userContext = new UserContextStore(db, localTimeZone());
   const knownAccounts = new KnownAccountStore(db);
 
   return {

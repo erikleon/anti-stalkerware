@@ -78,7 +78,7 @@ const api: DocketApi = {
   },
   userContext: {
     listBoundaries: () => ipcRenderer.invoke("userContext:listBoundaries"),
-    addBoundary: (description, setAt, appliesToSender) => ipcRenderer.invoke("userContext:addBoundary", description, setAt, appliesToSender),
+    addBoundary: (description, setOn, appliesToSender) => ipcRenderer.invoke("userContext:addBoundary", description, setOn, appliesToSender),
     removeBoundary: (id) => ipcRenderer.invoke("userContext:removeBoundary", id),
     listTaggedPhrases: () => ipcRenderer.invoke("userContext:listTaggedPhrases"),
     addTaggedPhrase: (phrase, note) => ipcRenderer.invoke("userContext:addTaggedPhrase", phrase, note),
