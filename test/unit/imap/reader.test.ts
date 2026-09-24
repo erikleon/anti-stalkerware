@@ -100,4 +100,33 @@ describe("fetchNewMessages", () => {
     expect(results[0]!.raw.payload).toEqual(source);
     expect(hashPayload(results[0]!.raw.payload)).toBe(results[0]!.raw.hash);
   });
+
+  it("keeps the send time from the Date header", async () => {
+    const source = buildRawEmail({ from: "stalker@example.com", date: "Mon, 16 Feb 2026 10:00:00 -0500", subject: "hi", body: "hello" });
+    const fetcher = fakeFetcher([{ uid: 1, source, envelope: { from: [{ address: "stalker@example.com" }] } as never }]);
+    const [result] = await collect(fetchNewMessages(fetcher, ["stalker@example.com"], 0));
+    expect(result?.kind === "message" && result.message.sentAt.toISOString()).toBe("2026-02-16T15:00:00.000Z");
+  });
+
+  it("quarantines a message with no Date header instead of dating it at import time", async () => {
+    const source = Buffer.from("From: stalker@example.com\r\nSubject: hi\r\nContent-Type: text/plain\r\n\r\nhello\r\n", "utf8");
+    const fetcher = fakeFetcher([{ uid: 1, source, envelope: { from: [{ address: "stalker@example.com" }] } as never }]);
+    const [result] = await collect(fetchNewMessages(fetcher, ["stalker@example.com"], 0));
+    expect(result?.kind).toBe("quarantined");
+    if (result?.kind === "quarantined") expect(result.quarantine.reason).toContain("no Date header");
+  });
+
+  it("quarantines a message whose Date header can't be read (mailparser would return the current time)", async () => {
+    const source = buildRawEmail({ from: "stalker@example.com", date: "sometime last week", subject: "hi", body: "hello" });
+    const fetcher = fakeFetcher([{ uid: 1, source, envelope: { from: [{ address: "stalker@example.com" }] } as never }]);
+    const [result] = await collect(fetchNewMessages(fetcher, ["stalker@example.com"], 0));
+    expect(result?.kind).toBe("quarantined");
+    if (result?.kind === "quarantined") expect(result.quarantine.reason).toBe('unreadable Date header: "sometime last week"');
+  });
 });
+
+async function collect<T>(iterable: AsyncIterable<T>): Promise<T[]> {
+  const out: T[] = [];
+  for await (const item of iterable) out.push(item);
+  return out;
+}

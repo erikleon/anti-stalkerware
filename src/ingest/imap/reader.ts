@@ -102,6 +102,11 @@ async function normalizeMessage(
       };
     }
 
+    const sentAt = readDateHeader(parsed.headerLines);
+    if (typeof sentAt === "string") {
+      return { kind: "quarantined", raw, quarantine: quarantine(raw, "imap", sentAt) };
+    }
+
     const message: Message = {
       id: raw.id,
       rawRecordHash: raw.hash,
@@ -110,7 +115,7 @@ async function normalizeMessage(
       sender: senderAddress,
       fromSelf: false,
       text,
-      sentAt: parsed.date ?? new Date(),
+      sentAt,
       provenance: "live",
     };
     return { kind: "message", raw, message };
@@ -121,4 +126,20 @@ async function normalizeMessage(
       quarantine: quarantine(raw, "imap", `MIME parse failed: ${(err as Error).message}`),
     };
   }
+}
+
+/**
+ * The message's Date header, read from the raw header line rather than
+ * mailparser's `date`: mailparser returns the current time for a Date
+ * header it can't read, which would record the import time as the send
+ * time with nothing to show it happened. Returns the quarantine reason
+ * as a string when there's no usable date.
+ */
+function readDateHeader(headerLines: ReadonlyArray<{ key: string; line: string }>): Date | string {
+  const line = headerLines.find((h) => h.key === "date")?.line;
+  if (line === undefined) return "no Date header, so the send time is unknown";
+  const value = line.slice(line.indexOf(":") + 1).trim();
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return `unreadable Date header: ${JSON.stringify(value)}`;
+  return new Date(ms);
 }
