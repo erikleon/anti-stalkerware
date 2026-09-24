@@ -169,3 +169,40 @@ browser — DOM lib, ES module output — and can't share `tsconfig.eslint.json`
 with src/test's Node/CommonJS project). `npm run lint` now runs `eslint src
 test renderer`. Lint is clean except one expected warning (`no-console` on
 the deliberate main-process-only log line in `vault-session.ts`).
+
+## 10. No client-side validation on onboarding connect forms
+
+Clicking "Scan" with required fields blank (an IMAP form with nothing
+filled in, for instance) round-trips to the main process and back just to
+show a validation error from `connectImap()`'s own defensive check,
+instead of catching it before the IPC call. Not a broken experience —
+the error is now readable (see item 11) and the form stays usable — just
+a slower path to the same answer than a disabled Scan button until the
+required fields for that source are filled in would give.
+
+Found during a /qa pass (2026-09-23) testing what happens when a form is
+submitted empty; the sweep-then-scan flow always had this gap, it just
+hadn't been exercised end to end before.
+
+## 11. ~~Onboarding/settings showed raw Electron IPC error text~~ DONE 2026-09-23
+
+Found during the same /qa pass: a bad chat.db path, or an IMAP scan with
+blank fields, showed Electron's own wrapper verbatim ("Error invoking
+remote method 'onboarding:sweepImessage': TypeError: ...") or a bare
+"Error: " prefix. `renderer/dom.ts`'s `ipcErrorMessage()` strips both;
+used in onboarding's scan/connect error handling and settings' sync-now
+failure toast. Verified via `test/e2e/onboarding-error-handling.spec.ts`
+— couldn't unit-test the helper directly since importing anything from
+`renderer/` into `test/unit/` pulls it into `tsconfig.eslint.json`'s
+program, which has no DOM lib.
+
+## 12. Some full-width buttons look heavier than intended
+
+"Lock now" (Settings), "Add boundary" / "Add tagged phrase" (Boundaries
+screen) stretch to the full width of their container because they're
+direct children of a `flex-direction: column` form wrapper with the
+default `align-items: stretch` — same mechanism as the primary "Export
+to file…" CTA, which is intentionally full-width, but these read as
+heavier than a secondary action probably should. Purely cosmetic, found
+during the same /qa pass; not fixed here since it's a judgment call
+about which buttons should read as primary vs. secondary, not a bug.
