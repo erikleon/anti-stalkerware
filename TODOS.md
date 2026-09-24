@@ -340,13 +340,19 @@ this change before calling it done. Real findings, all fixed:
   pure, OS-agnostic byte-parsing tests that run identically everywhere
   (comment corrected, not the tests — they were never wrong).
 
-Also surfaced, not acted on: whether `CommandOrControl+Shift+Escape` — a
-combo that happens to also be Windows' own reserved Task Manager
-shortcut — actually registers cleanly via Electron's `globalShortcut` on
-a real Windows desktop is still unverified; the Windows CI leg never
-reached the e2e job that would exercise it until the `EBUSY` fix above
-landed. Worth a specific look at the next green Windows run rather than
-assumed fine by default.
+**Confirmed, not yet acted on:** once the `EBUSY` fix let the Windows CI
+leg actually reach e2e, real data came back: `CommandOrControl+Shift+
+Escape` does NOT register on windows-latest — exactly the collision
+Codex flagged (it's Windows' own reserved Task Manager shortcut). This
+isn't a hypothetical anymore. The status-line fix means a Windows user
+is told plainly rather than left assuming a dead hotkey works, but the
+underlying gap is real: right now there is no working panic-hide hotkey
+on Windows at all. `test/e2e/lock-and-triage.spec.ts`'s assertion was
+loosened to accept either status message (the wiring is what it tests,
+not which way a given OS resolves) rather than papering over this with
+an assumption. A Windows-specific alternate combo is a real product
+decision (see the corresponding TODOS discussion / commit), not
+something to pick unilaterally.
 
 A new `src/ingest/instagram/` adapter (mirroring android-sms's shape:
 adapter.ts + metadata-sweep.ts + reader.ts) parsing the JSON export from

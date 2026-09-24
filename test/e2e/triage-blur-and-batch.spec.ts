@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test } from "@playwright/test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -44,7 +45,7 @@ test.describe("triage: blur toggle and batch selection", () => {
   });
 
   test.afterEach(() => {
-    rmSync(userDataDir, { recursive: true, force: true });
+    removeTestDir(userDataDir);
   });
 
   test("previews are blurred by default and the toggle reveals them", async () => {

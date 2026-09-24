@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test } from "@playwright/test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { removeTestDir } from "../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -43,7 +44,7 @@ test.describe("Vault and export", () => {
   });
 
   test.afterEach(() => {
-    rmSync(userDataDir, { recursive: true, force: true });
+    removeTestDir(userDataDir);
   });
 
   test("lists every vault message with no horizontal overflow, and search filters it", async () => {

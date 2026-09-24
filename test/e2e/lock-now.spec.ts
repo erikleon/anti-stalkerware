@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test } from "@playwright/test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
+import { removeTestDir } from "../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -21,7 +22,7 @@ test.describe("Lock now", () => {
   });
 
   test.afterEach(() => {
-    rmSync(userDataDir, { recursive: true, force: true });
+    removeTestDir(userDataDir);
   });
 
   test("locks immediately and shows why, and the same passphrase reopens it", async () => {

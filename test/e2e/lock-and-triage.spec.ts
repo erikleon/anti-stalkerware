@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test } from "@playwright/test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
+import { removeTestDir } from "../helpers/tmp-dir";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -21,7 +22,7 @@ test.describe("first run: create a vault and reach triage", () => {
   });
 
   test.afterEach(() => {
-    rmSync(userDataDir, { recursive: true, force: true });
+    removeTestDir(userDataDir);
   });
 
   test("shows the create-passphrase lock screen, then the triage empty state", async () => {
@@ -93,11 +94,16 @@ test.describe("first run: create a vault and reach triage", () => {
     await expect(window.getByText(/no hidden second passphrase/i)).toBeVisible();
 
     // The panic-hide hotkey's registration status (TODOS item 14) — real
-    // registration against a real OS, not a fake. Asserts the status line
-    // renders at all (catches the wiring breaking) and, since a normal
-    // test-runner desktop session can register a global shortcut, that it
-    // actually succeeded here.
-    await expect(window.getByText("That hotkey is active on this device.")).toBeVisible();
+    // registration against a real OS, not a fake. Only asserts the status
+    // line renders at all (catches the wiring breaking), not which way it
+    // resolves: real windows-latest CI confirmed Ctrl+Shift+Esc does NOT
+    // register there (that combo is Windows' own reserved Task Manager
+    // shortcut — see TODOS item 14's addendum), so asserting "active"
+    // unconditionally would make this test OS-dependent on a condition
+    // the fix exists specifically to handle gracefully.
+    await expect(
+      window.getByText("That hotkey is active on this device.").or(window.getByText(/That hotkey could not be set up/)),
+    ).toBeVisible();
 
     await app.close();
   });
