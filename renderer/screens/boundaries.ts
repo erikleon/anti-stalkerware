@@ -63,7 +63,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
     const dateInput = el("input", { type: "date" }) as HTMLInputElement;
     dateInput.value = todayInputValue();
     const senderInput = el("input", { type: "text", placeholder: "Only from this sender (optional)" }) as HTMLInputElement;
-    const addBoundaryBtn = el("button", { type: "button", class: "btn" }, ["Add boundary"]);
+    const addBoundaryBtn = el("button", { type: "button", class: "btn btn--inline" }, ["Add boundary"]);
     addBoundaryBtn.addEventListener("click", async () => {
       if (descInput.value.trim().length === 0) return;
       const setAt = dateInput.value ? new Date(dateInput.value) : new Date();
@@ -109,7 +109,7 @@ export async function renderBoundariesScreen(container: Element): Promise<void> 
     const phraseForm = el("div", { style: "display:flex;flex-direction:column;gap:12px;margin-top:8px;" });
     const phraseInput = el("input", { type: "text", placeholder: "A phrase, nickname, or reference" }) as HTMLInputElement;
     const noteInput = el("input", { type: "text", placeholder: "Why it matters" }) as HTMLInputElement;
-    const addPhraseBtn = el("button", { type: "button", class: "btn" }, ["Add tagged phrase"]);
+    const addPhraseBtn = el("button", { type: "button", class: "btn btn--inline" }, ["Add tagged phrase"]);
     addPhraseBtn.addEventListener("click", async () => {
       if (phraseInput.value.trim().length === 0) return;
       await window.docket.userContext.addTaggedPhrase(phraseInput.value.trim(), noteInput.value.trim());

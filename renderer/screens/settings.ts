@@ -94,7 +94,7 @@ export async function renderSettingsScreen(
     );
     pane.append(autoLockRow);
 
-    const lockNowBtn = el("button", { type: "button", class: "btn" }, ["Lock now"]);
+    const lockNowBtn = el("button", { type: "button", class: "btn btn--inline" }, ["Lock now"]);
     lockNowBtn.addEventListener("click", lockNow);
     pane.append(lockNowBtn);
 
