@@ -164,7 +164,9 @@ describe("SqliteVaultStore", () => {
     await store.append(raw, buildMessage());
     await expect(store.append(raw, buildMessage())).resolves.not.toThrow();
 
-    const rawRows = new Database(dbPath, { readonly: true }).prepare("SELECT COUNT(*) as c FROM raw_records").get() as { c: number };
+    const inspectDb = new Database(dbPath, { readonly: true });
+    const rawRows = inspectDb.prepare("SELECT COUNT(*) as c FROM raw_records").get() as { c: number };
+    inspectDb.close();
     expect(rawRows.c).toBe(1);
   });
 
@@ -177,7 +179,9 @@ describe("SqliteVaultStore", () => {
     expect(fetched?.text).toBe("edited version");
 
     // ...but both versions are still physically present, unlocked/decrypted directly.
-    const rows = new Database(dbPath, { readonly: true }).prepare("SELECT COUNT(*) as c FROM messages WHERE message_id = 'm1'").get() as { c: number };
+    const inspectDb = new Database(dbPath, { readonly: true });
+    const rows = inspectDb.prepare("SELECT COUNT(*) as c FROM messages WHERE message_id = 'm1'").get() as { c: number };
+    inspectDb.close();
     expect(rows.c).toBe(2);
   });
 
