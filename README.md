@@ -1,12 +1,13 @@
-# antistalker
+# docket
 
-A free, local-first desktop tool for people being harassed or stalked by an
-ex or a stalker. Triages abusive messages, preserves evidence in a form that
-survives a chain-of-custody challenge, and — gated, see below — attempts to
-identify a suspected harasser from public signals.
+A free, local-first desktop tool for people being harassed by someone they
+know — an ex, a coparent, a relative, a coworker. Triages harassing
+messages, preserves evidence in a form that survives a chain-of-custody
+challenge, and — gated, see below — attempts to identify a harasser from
+public signals.
 
 An informational site (not the app itself — the app runs entirely on your
-own machine) is at **https://erikleon.github.io/anti-stalkerware/**, built
+own machine) is at **https://erikleon.github.io/docket/**, built
 from `docs/`.
 
 The full plan, including 26 reviewed design decisions and an independent
@@ -56,7 +57,7 @@ tested. The Electron app runs a real flow end to end:
 Every tag pushed as `vX.Y.Z` builds a macOS `.dmg`, a Windows installer, and
 a Linux `.AppImage` via `.github/workflows/release.yml`, and attaches them
 to a matching GitHub Release. Grab the one for your OS from
-[Releases](https://github.com/erikleon/anti-stalkerware/releases).
+[Releases](https://github.com/erikleon/docket/releases).
 
 These builds are unsigned — nobody has paid for an Apple Developer ID or a
 Windows code-signing certificate for this project. That means:

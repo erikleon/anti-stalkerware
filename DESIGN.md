@@ -1,4 +1,4 @@
-# antistalker — Design System
+# docket — Design System
 
 Produced via `/plan-design-review` on 2026-09-22/23. Locked colorway:
 **C — Quiet Utility**. Interactive comparison board (11 screens: 5 colorway/
