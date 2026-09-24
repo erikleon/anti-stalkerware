@@ -170,15 +170,22 @@ with src/test's Node/CommonJS project). `npm run lint` now runs `eslint src
 test renderer`. Lint is clean except one expected warning (`no-console` on
 the deliberate main-process-only log line in `vault-session.ts`).
 
-## 10. No client-side validation on onboarding connect forms
+## 10. ~~No client-side validation on onboarding connect forms~~ DONE 2026-09-23
 
-Clicking "Scan" with required fields blank (an IMAP form with nothing
-filled in, for instance) round-trips to the main process and back just to
-show a validation error from `connectImap()`'s own defensive check,
-instead of catching it before the IPC call. Not a broken experience —
-the error is now readable (see item 11) and the form stays usable — just
-a slower path to the same answer than a disabled Scan button until the
-required fields for that source are filled in would give.
+Scan is now disabled until each source's required fields are filled in:
+`dbPath` for iMessage (starts enabled — a real default path is pre-filled),
+`exportFilePath` for Android SMS, and host/user/app-password for IMAP
+(port, mailbox, and the secure toggle all have working defaults already).
+Checked reactively on every keystroke via a `revalidate()` closure that
+updates the Scan button directly, without a full re-render — the existing
+fields already mutate state without redrawing to avoid losing focus
+mid-type, so this follows the same pattern rather than introducing a new one.
+
+This retired the e2e test that used to cover connectImap()'s own
+defensive error for an all-blank submission, since that path isn't
+reachable through the UI anymore — replaced with tests asserting the
+disabled/enabled transitions themselves
+(`test/e2e/onboarding-error-handling.spec.ts`).
 
 Found during a /qa pass (2026-09-23) testing what happens when a form is
 submitted empty; the sweep-then-scan flow always had this gap, it just

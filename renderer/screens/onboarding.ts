@@ -32,6 +32,16 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
   let imapAppPassword = "";
   let imapMailbox = "INBOX";
 
+  // Client-side check so Scan doesn't round-trip to the main process just
+  // to get back the same "a required field is empty" answer connectImap()
+  // etc. already throw defensively (found via /qa: submitting an
+  // all-blank IMAP form did work, just the slow way).
+  function requiredFieldsFilled(): boolean {
+    if (source === "imessage") return dbPath.trim().length > 0;
+    if (source === "android-sms") return exportFilePath.trim().length > 0;
+    return imapHost.trim().length > 0 && imapUser.trim().length > 0 && imapAppPassword.trim().length > 0;
+  }
+
   async function scan(): Promise<void> {
     error = undefined;
     try {
@@ -86,15 +96,37 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
       el("p", {}, [connectHelpText(source)]),
     );
 
+    // Declared before the fields below so their onChange handlers can
+    // close over it — safe even though scanBtn itself isn't assigned
+    // until after they're built, since those handlers only ever run
+    // later, on user input, never during this synchronous render.
+    let scanBtn: HTMLButtonElement;
+    function revalidate(): void {
+      scanBtn.disabled = !requiredFieldsFilled();
+    }
+
     const form = el("div", { style: "display:flex;flex-direction:column;gap:16px;" });
 
     if (source === "imessage") {
-      form.append(pathField("chat.db location", dbPath, (v) => (dbPath = v)));
+      form.append(
+        pathField("chat.db location", dbPath, (v) => {
+          dbPath = v;
+          revalidate();
+        }),
+      );
     } else if (source === "android-sms") {
-      form.append(pathField("Export file (XML)", exportFilePath, (v) => (exportFilePath = v)));
+      form.append(
+        pathField("Export file (XML)", exportFilePath, (v) => {
+          exportFilePath = v;
+          revalidate();
+        }),
+      );
     } else {
       form.append(
-        textField("Server", imapHost, (v) => (imapHost = v), "imap.example.com"),
+        textField("Server", imapHost, (v) => {
+          imapHost = v;
+          revalidate();
+        }, "imap.example.com"),
         textField("Port", String(imapPort), (v) => (imapPort = Number(v) || 993), "993"),
         (() => {
           const row = el("label", { style: "display:flex;align-items:center;gap:8px;font-size:13px;" });
@@ -106,7 +138,10 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
           row.append(cb, el("span", {}, ["Use a secure connection (TLS)"]));
           return row;
         })(),
-        textField("Email address", imapUser, (v) => (imapUser = v), "you@example.com"),
+        textField("Email address", imapUser, (v) => {
+          imapUser = v;
+          revalidate();
+        }, "you@example.com"),
         (() => {
           const field = el("div", { class: "field" });
           field.append(
@@ -114,7 +149,10 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
             (() => {
               const input = el("input", { type: "password", autocomplete: "off" }) as HTMLInputElement;
               input.value = imapAppPassword;
-              input.addEventListener("input", () => (imapAppPassword = input.value));
+              input.addEventListener("input", () => {
+                imapAppPassword = input.value;
+                revalidate();
+              });
               return input;
             })(),
             el("p", { style: "font-size:11px;margin:0;" }, [
@@ -130,8 +168,9 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
 
     if (error) pane.append(el("p", { style: "color:var(--high-fg);" }, [error]));
 
-    const scanBtn = el("button", { type: "button", class: "btn btn--primary" }, ["Scan"]);
+    scanBtn = el("button", { type: "button", class: "btn btn--primary" }, ["Scan"]) as HTMLButtonElement;
     scanBtn.addEventListener("click", () => void scan());
+    revalidate();
     pane.append(scanBtn);
   }
 
