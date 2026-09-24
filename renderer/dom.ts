@@ -27,6 +27,18 @@ export function showToast(message: string): void {
   setTimeout(() => toast.remove(), 2200);
 }
 
+/**
+ * Electron wraps any error a main-process IPC handler throws as
+ * `Error invoking remote method 'channel:name': <original error>` — real
+ * plumbing detail nobody trying to connect a data source should have to
+ * read. Strips that wrapper (and a leading "TypeError:"/"Error:" from the
+ * original error's own toString) down to the message underneath.
+ */
+export function ipcErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  return raw.replace(/^Error invoking remote method '[^']*':\s*/, "").replace(/^[A-Za-z]+Error:\s*/, "");
+}
+
 export function formatRelativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime();
   const diffMin = Math.round(diffMs / 60000);

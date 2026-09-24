@@ -1,4 +1,4 @@
-import { el, mount, showToast } from "../dom.js";
+import { el, ipcErrorMessage, mount, showToast } from "../dom.js";
 
 export async function renderSettingsScreen(
   container: Element,
@@ -23,7 +23,7 @@ export async function renderSettingsScreen(
       const result = await window.antistalker.onboarding.syncNow(source);
       showToast(`Imported ${result.appended} new message${result.appended === 1 ? "" : "s"}`);
     } catch (err) {
-      showToast(`Sync failed: ${(err as Error).message}`);
+      showToast(`Sync failed: ${ipcErrorMessage(err)}`);
     }
     syncingSource = undefined;
     await refreshSources();

@@ -1,4 +1,4 @@
-import { el, mount } from "../dom.js";
+import { el, ipcErrorMessage, mount } from "../dom.js";
 
 type WizardStep = "connect" | "before-you-continue" | "select" | "importing" | "done";
 
@@ -52,7 +52,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
       sweepResults.sort((a, b) => b.messageCount - a.messageCount);
       step = "before-you-continue";
     } catch (err) {
-      error = (err as Error).message;
+      error = ipcErrorMessage(err);
     }
     draw();
   }
@@ -74,7 +74,7 @@ export async function renderOnboardingScreen(container: Element, source: SourceK
       }
       step = "done";
     } catch (err) {
-      error = (err as Error).message;
+      error = ipcErrorMessage(err);
       step = "select";
     }
     draw();
