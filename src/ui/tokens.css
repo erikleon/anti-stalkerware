@@ -9,6 +9,9 @@
  * value below, a color that looks fine isn't the same as one that passes.
  */
 :root {
+  /* Tells Chromium which theme native controls (checkboxes, inputs,
+     scrollbars) should match; without it they stay light on the dark theme. */
+  color-scheme: dark;
   --bg: #17191d;
   --surface: #1e2126;
   --surface-hover: #262a30;
@@ -30,6 +33,7 @@
 
 @media (prefers-color-scheme: light) {
   :root {
+    color-scheme: light;
     --bg: #f4f5f2;
     --surface: #ffffff;
     --surface-hover: #ececea;

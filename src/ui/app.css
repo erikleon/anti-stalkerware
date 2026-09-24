@@ -445,6 +445,22 @@
   font-weight: 600;
 }
 
+/* .btn:hover is more specific than a modifier alone, so without these a
+   hovered primary or danger button took the plain hover background and
+   kept its own text color: dark text on a dark background. */
+.btn--primary:hover:not(:disabled),
+.btn--danger:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.btn--primary:hover {
+  background: var(--accent);
+}
+
+.btn--danger:hover {
+  background: var(--high-bg);
+}
+
 /* A secondary action inside a column layout: size to its label instead of
    stretching to the column's full width like a primary call to action.
    flex-shrink: 0 because .content-pane scrolls: once its content is taller
