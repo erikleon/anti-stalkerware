@@ -15,3 +15,14 @@ mkdirSync(distUiDir, { recursive: true });
 cpSync(srcUiDir, distUiDir, { recursive: true });
 
 console.log(`copied ${srcUiDir} -> ${distUiDir}`);
+
+// Browser ES modules from npm packages, copied as single files the
+// renderer imports by relative path (no bundler). Each must have no
+// imports of its own. Types come from renderer/vendor/*.d.ts.
+const vendorDir = join(distUiDir, "vendor");
+mkdirSync(vendorDir, { recursive: true });
+const vendored = [["minisiwyg-editor/dist/index.js", "minisiwyg-editor.js"]];
+for (const [from, to] of vendored) {
+  cpSync(join(repoRoot, "node_modules", from), join(vendorDir, to));
+  console.log(`copied node_modules/${from} -> dist/ui/vendor/${to}`);
+}
