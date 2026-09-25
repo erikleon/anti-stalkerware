@@ -2,6 +2,7 @@ import {
   createZonedDateTime,
   isDateTimeError,
   parsePlainDate,
+  parsePlainDateTime,
   projectInstant,
   resolveZonedDateTime,
   startOfZonedDateTimeUnit,
@@ -83,3 +84,58 @@ export function zonedTimestamp(instant: Date, timeZone: string): string | undefi
     throw err;
   }
 }
+
+/** One real instant a typed local time can mean. */
+export interface ResolvedLocalTime {
+  instant: Date;
+  /** The instant with offset and zone, e.g. "2026-11-01T01:30:00.000-04:00[America/New_York]". */
+  zoned: string;
+}
+
+export type LocalTimeResolution =
+  | ({ status: "ok" } & ResolvedLocalTime)
+  /** The time happened twice, when clocks went back. The person has to say which one; the app doesn't guess. */
+  | { status: "ambiguous"; earlier: ResolvedLocalTime; later: ResolvedLocalTime }
+  /** The time never happened, because clocks skipped forward over it. */
+  | { status: "nonexistent" }
+  | { status: "invalid" };
+
+/**
+ * Resolves a local date and time someone typed ("2026-11-01T01:30", the
+ * format of an HTML datetime-local input) to an instant in `timeZone`.
+ * Around a clock change, a typed time can be ambiguous or not exist at
+ * all. Those come back as their own statuses rather than being quietly
+ * shifted, so the person can choose: for evidence, "which 1:30 AM" is
+ * their call. `choice` answers an earlier "ambiguous" result.
+ */
+export function resolveLocalDateTime(local: string, timeZone: string, choice?: "earlier" | "later"): LocalTimeResolution {
+  let plain;
+  try {
+    // A datetime-local input leaves out seconds when they're zero, which
+    // parsePlainDateTime doesn't accept yet:
+    // https://github.com/erikleon/strictdatetime/issues/6
+    plain = parsePlainDateTime(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local) ? `${local}:00` : local);
+  } catch (err) {
+    if (isDateTimeError(err)) return { status: "invalid" };
+    throw err;
+  }
+
+  const at = (disambiguation: "reject" | "earlier" | "later"): ResolvedLocalTime => {
+    const zoned = resolveZonedDateTime(plain, timeZone, { disambiguation });
+    return { instant: new Date(zoned.epochMilliseconds), zoned: toZonedDateTimeString(zoned) };
+  };
+  // Always "reject" first: `choice` only picks between the two real
+  // instants of a repeated time. It must never move a skipped time.
+  try {
+    return { status: "ok", ...at("reject") };
+  } catch (err) {
+    if (!isDateTimeError(err)) throw err;
+    if (err.code === "AMBIGUOUS_TIME") {
+      return choice ? { status: "ok", ...at(choice) } : { status: "ambiguous", earlier: at("earlier"), later: at("later") };
+    }
+    if (err.code === "NONEXISTENT_TIME") return { status: "nonexistent" };
+    if (err.code === "OUT_OF_RANGE") return { status: "invalid" };
+    throw err;
+  }
+}
+
