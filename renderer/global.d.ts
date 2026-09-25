@@ -116,6 +116,41 @@ declare global {
   interface ExportResult {
     filePath: string;
     messageCount: number;
+    incidentCount: number;
+  }
+
+  interface ResolvedLocalTime {
+    instant: Date;
+    zoned: string;
+  }
+
+  type LocalTimeResolution =
+    | ({ status: "ok" } & ResolvedLocalTime)
+    | { status: "ambiguous"; earlier: ResolvedLocalTime; later: ResolvedLocalTime }
+    | { status: "nonexistent" }
+    | { status: "invalid" };
+
+  interface IncidentRevision {
+    revision: number;
+    writtenAt: Date;
+    html: string;
+    text: string;
+  }
+
+  interface IncidentEntry {
+    id: string;
+    occurredAt: Date;
+    occurredLocal: string;
+    involving?: string;
+    revisions: IncidentRevision[];
+  }
+
+  interface NewIncidentInput {
+    occurredLocal: string;
+    choice?: "earlier" | "later";
+    involving?: string;
+    html: string;
+    text: string;
   }
 
   interface ExportHistoryEntry {
@@ -210,6 +245,12 @@ declare global {
       setPersonLabel(id: string, personLabel: string): Promise<void>;
       remove(id: string): Promise<void>;
       importMacosBlocklist(): Promise<KnownAccountImportResult>;
+    };
+    incidentLog: {
+      resolveTime(occurredLocal: string, choice?: "earlier" | "later"): Promise<LocalTimeResolution>;
+      list(): Promise<IncidentEntry[]>;
+      add(input: NewIncidentInput): Promise<IncidentEntry>;
+      revise(id: string, html: string, text: string): Promise<IncidentEntry>;
     };
     vaultExport: {
       listAll(): Promise<WireMessage[]>;

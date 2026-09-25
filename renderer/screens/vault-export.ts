@@ -53,7 +53,9 @@ export async function renderVaultExportScreen(container: Element): Promise<void>
     const exportBtn = el("button", { type: "button", class: "btn btn--primary" }, ["Export to file…"]);
     exportBtn.addEventListener("click", async () => {
       const result = await window.docket.vaultExport.exportToFile();
-      exportStatus = result ? `Exported ${result.messageCount} messages to ${result.filePath}` : undefined;
+      exportStatus = result
+        ? `Exported ${result.messageCount} message${result.messageCount === 1 ? "" : "s"} and ${result.incidentCount} incident log entr${result.incidentCount === 1 ? "y" : "ies"} to ${result.filePath}`
+        : undefined;
       draw();
     });
     pane.append(exportBtn);

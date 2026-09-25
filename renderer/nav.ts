@@ -1,7 +1,7 @@
 import { el } from "./dom.js";
 import { ICONS } from "./icons.js";
 
-export type Screen = "triage" | "vault-export" | "osint" | "support" | "settings" | "destroy" | "onboarding" | "boundaries";
+export type Screen = "triage" | "incident-log" | "vault-export" | "osint" | "support" | "settings" | "destroy" | "onboarding" | "boundaries";
 
 export interface NavItem {
   screen: Screen;
@@ -9,10 +9,11 @@ export interface NavItem {
   icon: string;
 }
 
-/** Order matches DESIGN.md "App-level navigation": Triage, Vault/Export, OSINT, then the support icon added for TODOS item 5, then Settings pinned to the bottom. */
+/** Order matches DESIGN.md "App-level navigation": Triage, Incident log, Vault/Export, OSINT, then the support icon, then Settings pinned to the bottom. */
 function navItems(osintHasAnyEligible: boolean): NavItem[] {
   return [
     { screen: "triage", label: "Triage", icon: ICONS.triage },
+    { screen: "incident-log", label: "Incident log", icon: ICONS.incidentLog },
     { screen: "vault-export", label: "Vault and export", icon: ICONS.vault },
     { screen: "osint", label: "OSINT", icon: osintHasAnyEligible ? ICONS.osintUnlocked : ICONS.osintLocked },
     { screen: "support", label: "Support and resources", icon: ICONS.support },

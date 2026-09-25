@@ -9,6 +9,7 @@ import { renderSettingsScreen } from "./screens/settings.js";
 import { renderDestroyScreen } from "./screens/destroy.js";
 import { renderOnboardingScreen } from "./screens/onboarding.js";
 import { renderBoundariesScreen } from "./screens/boundaries.js";
+import { renderIncidentLogScreen } from "./screens/incident-log.js";
 
 type AppState =
   | { kind: "loading" }
@@ -81,6 +82,9 @@ function render(): void {
   switch (state.screen) {
     case "triage":
       void renderTriageScreen(screenContainer);
+      break;
+    case "incident-log":
+      void renderIncidentLogScreen(screenContainer);
       break;
     case "vault-export":
       void renderVaultExportScreen(screenContainer);
