@@ -109,7 +109,8 @@ Nothing on this app auto-plays, idles, or moves without a click.
 ## App-level navigation
 
 A 48px icon-only strip, left of the bucket rail, present on every screen
-(D5): Triage (home), Vault/Export, OSINT, Settings — in that order, OSINT
+(D5): Triage (home), Incident log, Vault/Export, OSINT, Support, Settings
+— in that order, OSINT
 showing a lock glyph when nothing is unlocked. `aria-current="true"` marks
 the active section; each icon is a real `<a href>`, not a div.
 
@@ -221,6 +222,38 @@ the vault. Block-list entries are imported one person per entry, never
 merged automatically — a block list mixes spam numbers with real people,
 and only the user knows which entries are the same person.
 
+## Incident log (added 2026-09-24)
+
+A written log of incidents no message records: a visit, a call, a missed
+custody exchange, being followed. Advocates recommend keeping one; docket
+only captured messages before this. Second in the nav, right after
+Triage, because it's written often and close to the event.
+
+- **Nothing is deleted or overwritten**, same as the message vault. "Add
+  an update" adds a revision; a History section lists every version with
+  the time it was written. The written time comes from the device clock;
+  the time the incident occurred is what the user enters, and both are
+  kept separately and exported separately.
+- **A typed time around a clock change is never guessed.** The
+  "When did it happen?" field is resolved in the main process with
+  strictdatetime. A time that happened twice (the night clocks go back)
+  shows both options with their zone abbreviations ("1:30 AM EDT, the
+  first time" / "1:30 AM EST, after the clocks went back") and Save stays
+  disabled until one is chosen. A time the clocks skipped over is refused
+  with a plain sentence. The chosen instant is stored with its offset and
+  zone name, and the entry title shows the zone abbreviation, so the two
+  1:30s stay distinct everywhere.
+- **Rich text, narrowly.** minisiwyg-editor with a toolbar of bold,
+  italic, underline, two list types, and quote. No links (a URL stays
+  plain text, and nothing in an entry can navigate the window), no
+  images, no headings. The same policy is applied while typing, on paste,
+  before saving, and every time an entry is shown.
+- **"Who was involved?"** is free text with the known-account person
+  names offered as suggestions.
+- **Export**: entries go into the same export file under their own
+  disclosure, which says they are the user's own account, not captured
+  records.
+
 ## Settings
 
 Sources list (connection status per ingest adapter), the D10
@@ -329,6 +362,15 @@ already-built and already-locked IA on the strength of one comparison.
 date-range picker where this design's Vault/Export screen has a plain
 search box. Neither is wrong; both are reasonable future refinements, not
 logged as TODOS given how minor they are relative to the find-support gap.
+
+## Renderer Content-Security-Policy (added 2026-09-24)
+
+`src/ui/index.html` sets `default-src 'none'`, `script-src 'self'`,
+`connect-src 'none'`, and allows only inline `style=""` attributes
+(`style-src-attr 'unsafe-inline'`), which the screens set on elements they
+build; `<style>` elements from anywhere else are blocked. The main window
+also refuses every navigation and every new window. Found because
+Electron warned about the missing policy after the Electron 44 upgrade.
 
 ## Not yet designed
 

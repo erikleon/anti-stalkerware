@@ -689,7 +689,7 @@ a PlainDateTime),
 [#5](https://github.com/erikleon/strictdatetime/issues/5) (strict RFC
 5322 date parser, which would replace the IMAP `Date.parse` fallback).
 
-## 21. Upgrade Electron off Node 20
+## 21. ~~Upgrade Electron off Node 20~~ DONE 2026-09-24
 
 Electron 33 ships Node 20.18, which reached end of life in April 2026.
 strictdatetime declares `node >=22`; it works on 20.18 (tested), but
@@ -702,3 +702,66 @@ Also seen during this work: `crypto.test.ts`'s timing test ("wrong
 passphrase and a corrupted canary take roughly the same time") failed
 once under full parallel load and passed 3/3 alone. It compares two
 wall-clock durations, so it's load-sensitive.
+
+**Done the same day.** Electron 33 → 44.4.5 (Node 24.21, Chromium 152),
+better-sqlite3 11 → 13.0.3. better-sqlite3 13 is the first N-API release,
+so one prebuilt binary now loads in both plain Node and Electron: the
+`rebuild:node` / `rebuild:electron` scripts, their `pre*` hooks, and
+`@electron/rebuild` are gone, and so is the old failure where every
+unlock said "That passphrase didn't work" after running the wrong one.
+CI runs on Node 24 to match Electron. All three CI runners green.
+
+Found while checking the upgrade:
+
+- **The installers shipped the whole repository**, including `.git`,
+  `src/`, `test/`, `qa-reports/`, TODOS.md and DESIGN.md. A platform's
+  `files` list in electron-builder replaces the top-level list rather
+  than merging with it, so the per-platform onnxruntime excludes added in
+  item 13 silently dropped every shared exclude. For an app that installs
+  as "Notes" to stay unnoticed, the design docs inside it said exactly
+  what it is. The config moved to `electron-builder.cjs`, where each
+  platform list is built from one shared base, and `npmRebuild` is off
+  (both native modules are N-API). The macOS app went from 721 MB to
+  388 MB; `app.asar` from 334 MB to 11 MB. No release had been published,
+  so no public installer contained any of it.
+- **No Content-Security-Policy in the renderer** (Electron's own warning).
+  Added, plus a navigation and new-window block in the main window. See
+  DESIGN.md.
+- **The window title and lock screen said "Ledger"** while the installed
+  app is named "Notes". Now "Notes" everywhere.
+- The scrypt timing test failed about one run in two under full parallel
+  load. It now takes the fastest of three interleaved runs per path; a
+  path that skipped scrypt would still fail it by a factor of about 100.
+
+## 22. ~~Incident log~~ DONE 2026-09-24
+
+See DESIGN.md "Incident log". `src/vault/incident-log.ts` (append-only,
+encrypted text and "involving", revisions never overwritten),
+`src/time/local-time.ts`'s `resolveLocalDateTime` (ok / ambiguous /
+nonexistent / invalid, never shifting a time on its own),
+`renderer/screens/incident-log.ts`, and the export's `incidentLog`
+section with its own disclosure. minisiwyg-editor 0.6.0 is copied into
+`dist/ui/vendor/` at build time (the renderer has no bundler; the file has
+no imports of its own) and typed through `renderer/vendor/`.
+
+Verified: 9 store tests, 5 new time-resolution tests, an export test, and
+`test/e2e/incident-log.spec.ts` (ambiguous time → choice → save →
+update → history; skipped time refused; pasted `<img onerror>`,
+`javascript:` link, and `<script>` all removed with the text kept, and
+the payload never ran). The two clock-change e2e tests run with
+`TZ=America/New_York` and skip on Windows, which ignores `TZ`.
+
+Found in minisiwyg-editor while integrating (not filed; see below):
+- Bold, italic, and underline do nothing with no text selected
+  (`src/editor.ts`, `if (range.collapsed) return;`), so "click Bold, then
+  type" leaves the typed text plain. Most editors turn the style on for
+  the next typed text.
+- `createEditor` throws unless its element is already in the page. The
+  error is clear, but the README doesn't mention it; docket's screen
+  builds each view detached, so it has to start the editor after
+  mounting.
+
+Filed on strictdatetime:
+[#6](https://github.com/erikleon/strictdatetime/issues/6) — plain time
+parsers reject "HH:MM", the format a datetime-local input produces.
+

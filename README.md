@@ -67,6 +67,12 @@ tested. The Electron app runs a real flow end to end:
   compares a flagged sender with each person on the list: shared
   numbers, emails, or usernames, and writing style against what that
   person sent before you blocked them.
+- **Incident log** — for what no message records: a visit, a call, a
+  missed exchange, being followed. Rich text (minisiwyg-editor, with a
+  narrow sanitizing policy), nothing deleted or overwritten (an update
+  adds a revision and keeps the old text), and a typed time that falls on
+  a clock change is asked about, never guessed (strictdatetime). Entries
+  go into the evidence export under their own disclosure.
 - **Instagram** — imports the JSON export from Instagram's "Download
   your information" (DMs and message requests). Unsent and deleted
   messages are not in that export.
