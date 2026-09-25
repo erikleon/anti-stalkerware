@@ -16,7 +16,8 @@ import type { Message, SourceKind } from "../types/message";
 import * as onboarding from "./onboarding";
 import { readInstagramBlocked } from "../ingest/instagram/blocked";
 import { expandHome } from "./paths";
-import { localTimeZone } from "../time/local-time";
+import { localTimeZone, resolveLocalDateTime, type LocalTimeResolution } from "../time/local-time";
+import type { IncidentEntry } from "../vault/incident-log";
 import type {
   CandidateInput,
   DestroyResult,
@@ -25,6 +26,7 @@ import type {
   HotkeyStatus,
   ImapConnectionInput,
   KnownAccountImportResult,
+  NewIncidentInput,
   OsintSenderEligibility,
   RankedLead,
   Settings,
@@ -165,6 +167,27 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
     onboarding.importMacosBlocklist(requireVault(session).knownAccounts),
   );
 
+  bind<[string, "earlier" | "later" | undefined], LocalTimeResolution>(session, "incidentLog:resolveTime", async (local, choice) =>
+    resolveLocalDateTime(local, localTimeZone(), choice),
+  );
+  bind<[], IncidentEntry[]>(session, "incidentLog:list", async () => requireVault(session).incidentLog.list());
+  bind<[NewIncidentInput], IncidentEntry>(session, "incidentLog:add", async (input) => {
+    checkIncidentSize(input.html, input.text);
+    const time = resolveLocalDateTime(input.occurredLocal, localTimeZone(), input.choice);
+    if (time.status !== "ok") throw new Error(INCIDENT_TIME_ERRORS[time.status]);
+    return requireVault(session).incidentLog.add({
+      occurredAt: time.instant,
+      occurredLocal: time.zoned,
+      ...(input.involving ? { involving: input.involving } : {}),
+      html: input.html,
+      text: input.text,
+    });
+  });
+  bind<[string, string, string], IncidentEntry>(session, "incidentLog:revise", async (id, html, text) => {
+    checkIncidentSize(html, text);
+    return requireVault(session).incidentLog.revise(id, html, text);
+  });
+
   bind<[], Message[]>(session, "vaultExport:listAll", async () => listAllMessages(requireVault(session).store));
   bind<[], string>(session, "vaultExport:disclosureText", async () => EXPORT_DISCLOSURE_TEXT);
   bind<[], ExportResult | undefined>(session, "vaultExport:exportToFile", async () => exportToFile(session, mainWindow));
@@ -261,6 +284,23 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
   });
 }
 
+/** The renderer resolves the time first and asks the user; these only show if that step was skipped. */
+const INCIDENT_TIME_ERRORS = {
+  ambiguous: "That time happened twice that night, when the clocks went back. Choose which one.",
+  nonexistent: "That time didn't happen that night: the clocks skipped forward over it. Choose another time.",
+  invalid: "That isn't a date and time the app can read.",
+} as const;
+
+// Far more than any written account needs; stops a runaway paste from
+// filling the vault.
+const MAX_INCIDENT_HTML_LENGTH = 500_000;
+
+function checkIncidentSize(html: string, text: string): void {
+  if (html.length > MAX_INCIDENT_HTML_LENGTH || text.length > MAX_INCIDENT_HTML_LENGTH) {
+    throw new Error("That entry is too long to save. Split it into more than one entry.");
+  }
+}
+
 async function exportToFile(session: VaultSession, mainWindow: BrowserWindow): Promise<ExportResult | undefined> {
   const vault = requireVault(session);
   const messages = await listAllMessages(vault.store);
@@ -272,7 +312,8 @@ async function exportToFile(session: VaultSession, mainWindow: BrowserWindow): P
   });
   if (canceled || !filePath) return undefined;
 
-  const payload = buildExportPayload(messages, localTimeZone());
+  const incidents = vault.incidentLog.list();
+  const payload = buildExportPayload(messages, localTimeZone(), incidents);
   await writeFile(filePath, JSON.stringify(payload, null, 2), "utf8");
   await vault.integrityLog.append({
     kind: "export",
@@ -280,5 +321,5 @@ async function exportToFile(session: VaultSession, mainWindow: BrowserWindow): P
     occurredAt: new Date(),
   });
 
-  return { filePath, messageCount: messages.length };
+  return { filePath, messageCount: messages.length, incidentCount: incidents.length };
 }

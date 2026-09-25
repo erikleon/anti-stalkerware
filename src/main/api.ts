@@ -15,8 +15,33 @@ import type { StoredBoundary, StoredTaggedPhrase } from "../vault/user-context";
 import type { CandidateInput } from "../osint/candidate-input";
 import type { OsintSignal } from "../osint/graph";
 import type { KnownAccountKind, StoredKnownAccount } from "../vault/known-accounts";
+import type { IncidentEntry } from "../vault/incident-log";
+import type { LocalTimeResolution } from "../time/local-time";
 
-export type { Bucket, TriageRow, StoredBoundary, StoredTaggedPhrase, CandidateInput, OsintSignal, KnownAccountKind, StoredKnownAccount };
+export type {
+  Bucket,
+  TriageRow,
+  StoredBoundary,
+  StoredTaggedPhrase,
+  CandidateInput,
+  OsintSignal,
+  KnownAccountKind,
+  StoredKnownAccount,
+  IncidentEntry,
+  LocalTimeResolution,
+};
+
+/** A new incident log entry from the renderer. */
+export interface NewIncidentInput {
+  /** "YYYY-MM-DDTHH:MM" from a datetime-local input, in this machine's time zone. */
+  occurredLocal: string;
+  /** Which instant, when `occurredLocal` happened twice (clocks went back). */
+  choice?: "earlier" | "later";
+  involving?: string;
+  /** Sanitized in the renderer; sanitize again before rendering it anywhere. */
+  html: string;
+  text: string;
+}
 
 export interface UnlockResult {
   /** Never distinguishes "wrong passphrase" from "corrupted vault" — see crypto.ts. */
@@ -62,6 +87,7 @@ export interface DestroyResult {
 export interface ExportResult {
   filePath: string;
   messageCount: number;
+  incidentCount: number;
 }
 
 export interface ExportHistoryEntry {
@@ -147,6 +173,14 @@ export interface DocketApi {
     remove(id: string): Promise<void>;
     /** Adds every entry on this Mac's block list, each as its own person until relabeled. */
     importMacosBlocklist(): Promise<KnownAccountImportResult>;
+  };
+  incidentLog: {
+    /** Checks a typed local date and time before saving: ok, ambiguous (ask which), nonexistent, or invalid. */
+    resolveTime(occurredLocal: string, choice?: "earlier" | "later"): Promise<LocalTimeResolution>;
+    list(): Promise<IncidentEntry[]>;
+    add(input: NewIncidentInput): Promise<IncidentEntry>;
+    /** Adds a revision. Earlier text is kept; nothing in the log can be deleted. */
+    revise(id: string, html: string, text: string): Promise<IncidentEntry>;
   };
   vaultExport: {
     listAll(): Promise<Message[]>;

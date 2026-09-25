@@ -42,6 +42,12 @@ const api: DocketApi = {
     remove: (id) => ipcRenderer.invoke("knownAccounts:remove", id),
     importMacosBlocklist: () => ipcRenderer.invoke("knownAccounts:importMacosBlocklist"),
   },
+  incidentLog: {
+    resolveTime: (occurredLocal, choice) => ipcRenderer.invoke("incidentLog:resolveTime", occurredLocal, choice),
+    list: () => ipcRenderer.invoke("incidentLog:list"),
+    add: (input) => ipcRenderer.invoke("incidentLog:add", input),
+    revise: (id, html, text) => ipcRenderer.invoke("incidentLog:revise", id, html, text),
+  },
   vaultExport: {
     listAll: () => ipcRenderer.invoke("vaultExport:listAll"),
     disclosureText: () => ipcRenderer.invoke("vaultExport:disclosureText"),
