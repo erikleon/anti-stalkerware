@@ -10,6 +10,7 @@ import { TriageStateStore } from "./triage-state";
 import { SourceConfigStore } from "./source-config";
 import { UserContextStore } from "./user-context";
 import { KnownAccountStore } from "./known-accounts";
+import { IncidentLogStore } from "./incident-log";
 import { localTimeZone } from "../time/local-time";
 
 const METADATA_FILENAME = "vault.meta.json";
@@ -45,6 +46,7 @@ export interface Vault {
   sourceConfig: SourceConfigStore;
   userContext: UserContextStore;
   knownAccounts: KnownAccountStore;
+  incidentLog: IncidentLogStore;
   key: VaultKey;
   close(): void;
 }
@@ -84,6 +86,7 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
   const sourceConfig = new SourceConfigStore(db);
   const userContext = new UserContextStore(db, localTimeZone());
   const knownAccounts = new KnownAccountStore(db);
+  const incidentLog = new IncidentLogStore(db, key);
 
   return {
     store,
@@ -93,6 +96,7 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
     sourceConfig,
     userContext,
     knownAccounts,
+    incidentLog,
     key,
     close() {
       // store, credentials and integrityLog all share this one connection —
