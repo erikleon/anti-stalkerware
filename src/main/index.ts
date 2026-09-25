@@ -52,6 +52,12 @@ function createWindow(): BrowserWindow {
   // <script> tag can't run) and copied into dist/ui alongside main's own
   // output. See scripts/copy-ui-assets.mjs.
   void window.loadFile(path.join(__dirname, "../ui/index.html"));
+
+  // The window only ever shows the app's own page. A link that slipped
+  // into rich text, or a dropped file, must not replace it, and nothing
+  // may open a new window.
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   return window;
 }
 
