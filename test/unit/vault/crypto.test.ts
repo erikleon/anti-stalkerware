@@ -60,14 +60,21 @@ describe("createVaultMetadata + ScryptGcmVaultCrypto", () => {
       return performance.now() - start;
     };
 
-    const wrongPassTime = await timeOf(() => new ScryptGcmVaultCrypto(metadata).unlock("wrong passphrase"));
-    const corruptedTime = await timeOf(() => new ScryptGcmVaultCrypto(corrupted).unlock("correct passphrase"));
+    // Interleaved, and the fastest of three runs per path: the rest of the
+    // suite runs in parallel, and one slow run under that load must not
+    // decide the result. A path that skipped the scrypt derivation would be
+    // around a hundred times faster, not merely less than half as fast.
+    const wrongPassTimes: number[] = [];
+    const corruptedTimes: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      wrongPassTimes.push(await timeOf(() => new ScryptGcmVaultCrypto(metadata).unlock("wrong passphrase")));
+      corruptedTimes.push(await timeOf(() => new ScryptGcmVaultCrypto(corrupted).unlock("correct passphrase")));
+    }
+    const wrongPassTime = Math.min(...wrongPassTimes);
+    const corruptedTime = Math.min(...corruptedTimes);
 
-    // Generous tolerance — this isn't a rigorous timing-attack audit, just
-    // a check that one path isn't obviously short-circuiting the other by
-    // skipping the scrypt derivation.
-    expect(Math.abs(wrongPassTime - corruptedTime)).toBeLessThan(Math.max(wrongPassTime, corruptedTime) * 0.5);
-  });
+    expect(Math.min(wrongPassTime, corruptedTime)).toBeGreaterThan(Math.max(wrongPassTime, corruptedTime) * 0.5);
+  }, 60_000);
 
   it("currentKey() reflects unlock/lock state", async () => {
     const metadata = createVaultMetadata("pass");
