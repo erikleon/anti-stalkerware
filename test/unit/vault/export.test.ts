@@ -78,6 +78,26 @@ describe("buildExportPayload", () => {
     });
   });
 
+  it("carries the incident log with its own disclosure and every revision", () => {
+    const entry = {
+      id: "i1",
+      occurredAt: new Date("2026-11-01T06:30:00.000Z"),
+      occurredLocal: "2026-11-01T01:30:00.000-05:00[America/New_York]",
+      involving: "Jordan",
+      revisions: [
+        { revision: 1, writtenAt: new Date("2026-11-01T12:00:00.000Z"), html: "<p>first</p>", text: "first" },
+        { revision: 2, writtenAt: new Date("2026-11-02T12:00:00.000Z"), html: "<p>second</p>", text: "second" },
+      ],
+    };
+    const payload = buildExportPayload([], "America/New_York", [entry]);
+    expect(payload.incidentLogDisclosure).toContain("not records captured");
+    expect(payload.incidentLog[0]).toMatchObject({ id: "i1", occurredAt: "2026-11-01T06:30:00.000Z", involving: "Jordan" });
+    expect(payload.incidentLog[0]!.revisions.map((r) => [r.revision, r.text, r.writtenAtLocal])).toEqual([
+      [1, "first", "2026-11-01T07:00:00.000-05:00[America/New_York]"],
+      [2, "second", "2026-11-02T07:00:00.000-05:00[America/New_York]"],
+    ]);
+  });
+
   it("leaves out the local time before 1970 instead of failing the export", () => {
     const message = { ...buildMessage("m1", "thread-a"), sentAt: new Date("1969-12-31T00:00:00.000Z") };
     const [exported] = buildExportPayload([message], "America/New_York").messages;
