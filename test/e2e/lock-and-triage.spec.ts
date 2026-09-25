@@ -32,7 +32,7 @@ test.describe("first run: create a vault and reach triage", () => {
     const window = await app.firstWindow();
 
     // Fresh userData dir -> no vault yet -> create-passphrase mode.
-    await expect(window.locator("h1")).toHaveText("Ledger");
+    await expect(window.locator("h1")).toHaveText("Notes");
     await expect(window.locator("text=Create a passphrase")).toBeVisible();
 
     await window.locator("#pass").fill("correct horse battery staple");

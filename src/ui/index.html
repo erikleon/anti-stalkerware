@@ -2,8 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <!-- Neutral title on purpose (D5 — disguise) — never the product's real name in anything an onlooker could glance at. -->
-    <title>Ledger</title>
+    <!--
+      Only this app's own files, no network, no inline or injected script.
+      style-src-attr allows the style="" attributes the screens set on
+      elements they build; <style> elements from anywhere else stay blocked.
+      The renderer talks to the main process over IPC only, so connect-src
+      is 'none'.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <!-- Neutral title on purpose (D5 — disguise), and the same name the packaged app installs as (package.json build.productName). -->
+    <title>Notes</title>
     <link rel="stylesheet" href="./tokens.css" />
     <link rel="stylesheet" href="./app.css" />
   </head>

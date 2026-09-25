@@ -29,7 +29,7 @@ export function renderLockScreen(container: Element, options: LockScreenOptions)
     const wordmark = el("div", { style: "display:flex;align-items:center;gap:8px;" });
     const icon = el("span", { "aria-hidden": "true" });
     icon.innerHTML = ICONS.wordmark;
-    wordmark.append(icon, el("span", {}, ["Ledger"]));
+    wordmark.append(icon, el("span", {}, ["Notes"]));
     const help = el("a", { href: "#" }, ["Help"]);
     help.addEventListener("click", (e) => {
       e.preventDefault();
@@ -41,7 +41,7 @@ export function renderLockScreen(container: Element, options: LockScreenOptions)
     const heading = el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:10px;" });
     const headingIcon = el("span", { "aria-hidden": "true" });
     headingIcon.innerHTML = ICONS.wordmark;
-    const title = el("h1", { style: "margin:0;font-size:16px;font-weight:600;" }, ["Ledger"]);
+    const title = el("h1", { style: "margin:0;font-size:16px;font-weight:600;" }, ["Notes"]);
     const subtitle = el(
       "p",
       { style: "margin:0;font-size:13px;color:var(--text-dim);" },
