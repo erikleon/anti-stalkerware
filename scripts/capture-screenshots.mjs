@@ -2,7 +2,7 @@
 // app, using a throwaway vault filled with made-up demo data. Nothing here
 // touches a real vault or the real macOS block list.
 //
-//   npm run build && npm run rebuild:electron && node scripts/capture-screenshots.mjs
+//   npm run build && node scripts/capture-screenshots.mjs
 //
 // One step is not something a user can do: no classifier model ships with
 // the app, so nothing can mark a message as over the abuse threshold. This

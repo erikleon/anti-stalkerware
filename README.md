@@ -116,25 +116,17 @@ npm run typecheck
 npm test
 ```
 
-### Native module ABI: Node vs Electron
+### Native modules
 
-`better-sqlite3` is a native addon, not N-API-stable — it's compiled
-against a specific V8/Node ABI. `npm install` builds it for whatever
-`node` is on your PATH, which is what `npm test` (Vitest, running under
-plain Node) needs. Electron bundles its own Node build with a different
-ABI, so running the actual app needs the same addon rebuilt against
-Electron's ABI instead, or you'll see every vault unlock silently fail
-with "That passphrase didn't work" regardless of the passphrase (the
-real error — a NODE_MODULE_VERSION mismatch — only shows up in the main
-process's own stderr, never in the renderer, by design: see
-`vault-session.ts`'s unlock() doc comment on why a real failure and a
-wrong passphrase must look identical to the UI).
+`better-sqlite3` (13 or later) and `onnxruntime-node` both use N-API, so
+one prebuilt binary works under plain Node (`npm test`) and under
+Electron (`npm start`, `npm run test:e2e`) with no rebuild step between
+them. Electron 44 runs Node 24; use Node 24 locally too.
 
-`npm start` and `npm run test:e2e` rebuild automatically for Electron's
-ABI via their `pre*` npm hooks; `npm test` rebuilds back for plain Node
-the same way. If you ever run the underlying commands directly (bypassing
-npm's pre-hooks), rebuild manually first: `npm run rebuild:electron` or
-`npm run rebuild:node`.
+Newer npm versions ask before running a package's install scripts
+(`npm install-scripts ls`). None are needed for development:
+`better-sqlite3` ships prebuilt binaries for macOS, Windows, and Linux,
+and Electron downloads its own binary the first time it runs.
 
 ## Structure
 
