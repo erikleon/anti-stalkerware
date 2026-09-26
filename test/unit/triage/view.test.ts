@@ -121,6 +121,18 @@ describe("listTriageRows", () => {
     expect(rows[0]?.signalDetails).toEqual([]);
   });
 
+  it("says in words why the toxicity model flagged a thread", async () => {
+    const vault = fakeVault([buildThread({ crossesAbuseThreshold: true, maxToxicityScore: 0.86, maxToxicityLabel: "threat" })]);
+    const rows = await listTriageRows(vault, fakeTriageState(), fakeUserContext());
+    expect(rows[0]?.signalDetails).toEqual(["Toxicity model: reads as a threat (86%)"]);
+  });
+
+  it("gives no model reason below the Medium band", async () => {
+    const vault = fakeVault([buildThread({ maxToxicityScore: 0.2, maxToxicityLabel: "toxic" })]);
+    const rows = await listTriageRows(vault, fakeTriageState(), fakeUserContext());
+    expect(rows[0]?.signalDetails).toEqual([]);
+  });
+
   it("defaults to unreviewed, unhidden when no state was ever recorded for that message", async () => {
     const vault = fakeVault([buildThread({ latestMessageId: "msg-new" })]);
     const rows = await listTriageRows(vault, fakeTriageState(), fakeUserContext());

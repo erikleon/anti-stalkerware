@@ -83,9 +83,24 @@ export async function listTriageRows(vault: VaultStore, triageState: TriageState
       ...thread,
       ...state,
       band: bandOf(thread, threadSignals.length > 0),
-      signalDetails: threadSignals.map((s) => s.detail),
+      signalDetails: [...modelReason(thread), ...threadSignals.map((s) => s.detail)],
     };
   });
+}
+
+const LABEL_TEXT: Record<string, string> = {
+  toxic: "hostile language",
+  severe_toxic: "severely hostile language",
+  threat: "a threat",
+  insult: "an insult",
+  identity_hate: "identity-based hate",
+};
+
+/** Why the toxicity model flagged a thread, in words, when its score reached the Medium band. */
+function modelReason(thread: { maxToxicityScore: number; maxToxicityLabel?: string }): string[] {
+  if (thread.maxToxicityScore < MEDIUM_BAND_FLOOR || !thread.maxToxicityLabel) return [];
+  const what = LABEL_TEXT[thread.maxToxicityLabel] ?? thread.maxToxicityLabel;
+  return [`Toxicity model: reads as ${what} (${Math.round(thread.maxToxicityScore * 100)}%)`];
 }
 
 export function countByBucket(rows: TriageRow[]): Record<Bucket, number> {
