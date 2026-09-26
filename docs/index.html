@@ -260,8 +260,9 @@
       coparent, a relative, a coworker. It scores incoming messages so you don't have to read all
       of it yourself, preserves what you choose to keep in a form built to survive a
       chain-of-custody challenge, and — only when tightly gated — helps you check whether a new
-      number or account is someone you already blocked. There's no cloud and no account: the only
-      connection it makes is to your own email provider, if you connect email.
+      number or account is someone you already blocked. There's no cloud and no account. It connects
+      to your own email provider if you connect email, and to the sites an OSINT online check names,
+      only when you click it.
     </p>
     <div class="cta-row">
       <a class="btn btn--primary" href="https://github.com/erikleon/docket/releases">Download</a>
@@ -275,13 +276,12 @@
 <section id="screens">
   <div class="wrap">
     <h2>See it</h2>
-    <p class="shots-note">Screenshots from the real app with made-up demo data. No classifier model ships with the
-      app yet, so for these the newest sender was marked as over the abuse threshold by hand. That's what
-      turns on the High label and the OSINT check below.</p>
+    <p class="shots-note">Screenshots from the real app with made-up demo data. Every label and reason is
+      the app's own, including the High label from the toxicity model that runs on your device.</p>
     <div class="shots">
       <figure>
         <a href="screenshots/triage.png"><img src="screenshots/triage.png" width="1280" height="800" loading="lazy"
-          alt="Triage screen. Three threads under Needs review. The top one is labeled High, with the reason: sent after a boundary the user marked. Message previews are blurred; the open thread on the right shows three messages from a new number."></a>
+          alt="Triage screen. Three threads under Needs review. The top one is labeled High, with the reason: the toxicity model reads it as hostile language. Message previews are blurred; the open thread on the right shows three messages from a new number."></a>
         <figcaption>Triage: every flagged thread says why it was flagged. Previews stay blurred until you choose to read them.</figcaption>
       </figure>
       <figure>
@@ -330,14 +330,15 @@
 
     <div class="capability">
       <div class="n">03</div>
-      <h3>OSINT, gated — and verify-mode, not search-mode</h3>
-      <p>Only unlocks for someone already flagged as abusive in your own vault. Even then, it can't
-        look anyone up from scratch. It compares a new number or account with the people you already
-        blocked — imported from your Mac's block list or an Instagram export — or with one candidate you
-        name, using only messages already in your vault: a reused number or username, a matching email,
-        a similar writing style. Every result is labeled an unverified lead, never a
-        confirmed identity, and every check runs on your device with no network call at all. This
-        gate is friction against casual misuse, not proof of who someone is.</p>
+      <h3>OSINT, gated</h3>
+      <p>Only unlocks for someone already flagged as abusive in your own vault. On your device, it
+        compares a new number or account with the people you already blocked — imported from your
+        Mac's block list or an Instagram export — or with one candidate you name: a reused number or
+        username, a matching email, a similar writing style. Two optional online checks run only when
+        you click them, and say what they contact first: it flags IP-logging and malicious links in
+        their messages without ever opening them, and it checks which sites a username exists on.
+        Every result is labeled an unverified lead, never a confirmed identity. This gate is friction
+        against casual misuse, not proof of who someone is.</p>
     </div>
   </div>
 </section>
@@ -349,14 +350,16 @@
    │
    ├─ INGEST   scoped to threads you pick, not your whole history
    │
-   ├─ SCORE    local classifier + pattern detectors, no network
+   ├─ SCORE    toxicity model on your device + pattern detectors, no network
    │
    ├─ TRIAGE   neutral app name/icon, no notifications, panic-hide hotkey
    │
    ├─ VAULT    encrypted, append-only, passphrase ≠ your device login
    │
-   └─ OSINT   verify-mode today — checks a candidate you name against
-              your own vault data, no network call at all</pre>
+   └─ OSINT    comparisons against your own vault, no network; and
+              <span class="warn">two online checks, only when you click them</span>:
+              public threat lists (downloaded, links never sent or opened)
+              and a username lookup on 19 named sites</pre>
   </div>
 </section>
 
@@ -368,8 +371,9 @@
       <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Keyboard-driven triage<span>Arrow keys or j/k to move, Enter to open, r to mark reviewed, h to hide — one at a time or batch-selected. Previews are blurred by default.</span></span></div>
       <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Boundaries and inactivity auto-lock<span>You author boundaries and tagged phrases from Settings; the vault locks itself after an idle timeout (default 15 minutes) with a manual "Lock now" too.</span></span></div>
       <div class="status-row"><span class="badge badge--planned">By design</span><span class="label">No coerced-unlock / duress passphrase<span>Considered and turned down — a decoy vault or duress wipe both have real failure modes under pressure. The actual mitigation is the panic-hide hotkey, disclosed on the app's own Support screen. See DESIGN.md.</span></span></div>
+      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Toxicity model on your device<span>A 23 MB model (MiniLM, Apache-2.0) ships with the app and scores messages locally. It flags threats and insults; ordinary swearing between friends is discounted. It does not catch polite-sounding coercion — the pattern detectors and your boundaries are for that.</span></span></div>
       <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Incident log<span>Write down what no message records — a visit, a call, a missed exchange. Nothing is deleted or overwritten, and a time that falls on a clock change is asked about, never guessed. Entries go into the evidence export.</span></span></div>
-      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">OSINT candidate check (verify-mode)<span>Name a candidate you already suspect; it's checked against your vault data only — reused username/email/phone, or a writing-style comparison. No network call, and it can't look anyone up from a bare identifier.</span></span></div>
+      <div class="status-row"><span class="badge badge--done">Built</span><span class="label">OSINT: known accounts, candidate check, online checks<span>Compares a flagged sender with people you blocked or name, on your device. Optional online checks flag IP-logging and malicious links (without opening them) and look up where a username exists — each runs only on a click and says what it contacts.</span></span></div>
       <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Known accounts from your block lists<span>Import the contacts you blocked in Messages on a Mac, or on Instagram. Onboarding flags them first, and OSINT compares a new number or account with each person you've blocked — shared identifiers and writing style, all on your device.</span></span></div>
       <div class="status-row"><span class="badge badge--planned">Not built</span><span class="label">Photo-based OSINT signal<span>Matching a candidate by photo would need real image fetching or facial recognition — the latter is legally restricted in several jurisdictions. Treated as its own future decision, not bundled with the signals above.</span></span></div>
       <div class="status-row"><span class="badge badge--done">Built</span><span class="label">Packaged installers (unsigned)<span>A macOS .dmg, Windows installer, and Linux .AppImage are built on every tagged release. No paid signing certificate, so the OS shows a one-time warning on first launch — see the README.</span></span></div>

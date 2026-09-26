@@ -765,3 +765,65 @@ Filed on strictdatetime:
 [#6](https://github.com/erikleon/strictdatetime/issues/6) — plain time
 parsers reject "HH:MM", the format a datetime-local input produces.
 
+
+## 23. ~~Ship a toxicity model~~ DONE 2026-09-25
+
+Before this, no model shipped: no message was ever scored, no sender ever
+crossed the abuse threshold, and OSINT could never unlock for a real
+user.
+
+- **Model:** `minuva/MiniLMv2-toxic-jigsaw-onnx` (Apache-2.0, 23 MB
+  quantized, distilled from `unitary/toxic-bert`, ROC-AUC 0.9860 vs the
+  teacher's 0.9864 on Jigsaw). Six independent labels including
+  "threat". Pinned by revision and SHA-256 in `models/toxicity.json`;
+  `scripts/fetch-model.mjs` downloads it for development and CI (cached
+  by the manifest's hash); installers bundle it as an extra resource, and
+  the app checks every file's hash before loading.
+- **Tokenizer:** Hugging Face's own `@huggingface/tokenizers` (Apache-2.0,
+  no dependencies) reading the model's `tokenizer.json`; checked against
+  reference token ids. It ignores the 512-token limit, so the classifier
+  scores long text in windows, plus each sentence alone — a threat at the
+  end of a long, calm email scored under the threshold inside a window of
+  ordinary text.
+- **Calibration found on real examples:** raw "toxic" fires on swearing
+  alone ("lol fuck yes, see you there" 0.98), which would have flagged
+  friends and opened OSINT on them. "toxic" now counts only as
+  toxic × (1 − obscene); threat and insult are unchanged. Friendly
+  swearing drops to 0.06–0.24; "you better watch your back tonight"
+  stays Medium. Polite coercion ("I know where you're staying now")
+  scores near zero — a documented limit, covered by the structural
+  signals.
+- **Scores are stored apart from evidence** (`message_scores`, written
+  only by `vault/message-scores.ts`), so `sqlite-store.ts` keeps its
+  enforced no-UPDATE rule. A background pass scores anything the current
+  model hasn't, after unlock and after each import; a model change
+  rescores everything. The user's own messages are never scored, and
+  `isAbusiveSender` now ignores them: on Android SMS a sent message's
+  `sender` is the other person's number, so an angry reply would have
+  marked them abusive.
+- Verified: 19 real-model unit tests, scoring-pass and service tests,
+  `test/e2e/toxicity-model.spec.ts` (an imported threat → High with the
+  model's reason → OSINT opens; a friend's swearing doesn't), and a
+  packaged macOS build scoring with the bundled model.
+
+Now reachable in practice, worth watching: `detectNewCorrelatedIdentifiers`
+marks any sender whose first message arrives within 72 hours after a
+known-abusive sender's last one as Medium ("unverified correlation"). With
+no model it never fired; with one, it will flag some innocent new
+contacts. The window was never tuned.
+
+## 24. ~~OSINT online checks: link safety and username presence~~ DONE 2026-09-25
+
+See DESIGN.md "Online checks". `src/osint/network/` (`http.ts`,
+`link-safety.ts`, `username-presence.ts`), five gated IPC channels, and
+the "Online checks" section at the end of the unlocked OSINT screen.
+Verified with 15 unit tests on a fake network (including that no
+message link is ever requested and a failed list download is reported,
+not hidden), `test/e2e/osint-online.spec.ts` (offline part only), and a
+live run: a Grabify link flagged by the built-in list and both downloaded
+lists, a bit.ly link flagged only as a short link, all five lists
+downloaded, all 19 sites answered.
+
+Open: docket has no license file. The downloaded IP-logger lists are GPL,
+which is one reason they're downloaded rather than copied in; choosing a
+license for docket itself is the owner's call.

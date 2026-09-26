@@ -16,9 +16,9 @@ from `docs/`.
 | --- | --- |
 | ![Onboarding picker with a sender marked "Blocked on this Mac", selected first](docs/screenshots/onboarding-blocked.png) | ![OSINT compare result: one lead at 65% from a phone mention and writing style](docs/screenshots/osint-compare.png) |
 
-Screenshots use made-up demo data. No classifier model ships yet, so the
-newest sender was marked as over the abuse threshold by hand; that's what
-shows the High label and unlocks OSINT. `scripts/capture-screenshots.mjs`
+Screenshots use made-up demo data; every label and reason in them is the
+app's own, including the High label from the toxicity model.
+`scripts/capture-screenshots.mjs`
 rebuilds them from the real app, and `scripts/render-og-card.mjs` rebuilds
 the link-preview card (`docs/og-image.png`).
 
@@ -51,15 +51,22 @@ tested. The Electron app runs a real flow end to end:
 - **Vault auto-lock** — configurable inactivity timeout (default 15
   minutes, 0 disables it), plus a manual "Lock now."
 - **Export, the OSINT gate, and remove-local-app-data** are real.
-- **OSINT is verify-mode, not search-mode** — you name a candidate you
-  already suspect (a known username, email, phone, and/or a writing
-  sample you believe is theirs) and the app checks only whether messages
-  already in your vault support that one hypothesis. It cannot look
-  anyone up from a bare identifier; that's deliberate, not a missing
-  feature — see DESIGN.md's OSINT section for why. Every check runs
-  locally, no network call. `profile-photo-match` (facial recognition or
-  image search) is the one signal type this doesn't cover, and is left
-  as a separate, unbuilt decision — see TODOS.md.
+- **Toxicity model, on the device** — a 23 MB MiniLM model
+  (`minuva/MiniLMv2-toxic-jigsaw-onnx`, Apache-2.0, pinned in
+  `models/toxicity.json`) ships inside the installers and scores messages
+  in the background after unlock and after every import. It flags threats
+  and insults; swearing alone is discounted so friends aren't flagged. It
+  does not catch polite-sounding coercion ("I know where you're staying
+  now") — the pattern detectors and your boundaries are for that. Its
+  label shows as the reason in triage, and Settings shows its status.
+- **OSINT** — only for a sender the model (or an import-time score) put
+  over the abuse threshold. On the device: compare with your known
+  accounts, or check one candidate you name. Online, only on a click and
+  after saying what it contacts: flag IP-logging, malicious, and phishing
+  links in their messages (built-in lists offline; public lists
+  downloaded and matched on the device — a link is never opened or sent),
+  and check which of 19 named sites a username exists on. Every result is
+  an unverified lead. `profile-photo-match` stays unbuilt — see TODOS.md.
 - **Known accounts** — the accounts you know belong to someone
   harassing you, usually ones you blocked. Import them from this Mac's
   Messages block list or an Instagram export's block list, or type them
@@ -134,6 +141,15 @@ Newer npm versions ask before running a package's install scripts
 `better-sqlite3` ships prebuilt binaries for macOS, Windows, and Linux,
 and Electron downloads its own binary the first time it runs.
 
+### The toxicity model
+
+`npm test` and `npm run build` first run `npm run fetch-model`, which
+downloads the model files listed in `models/toxicity.json` (23 MB, from
+a pinned Hugging Face revision) into `models/toxicity/` and checks each
+file's SHA-256. It needs the network once; after that it's a no-op.
+The files aren't committed. Installers bundle them, and the installed
+app never downloads anything.
+
 ## Structure
 
 ```
@@ -174,7 +190,10 @@ qa-reports/ Test plans and dated /qa pass reports
 ## Design constraints worth knowing before touching this code
 
 - Nothing in `ingest`, `score`, `vault`, or the triage UI ever makes a
-  network call. Only `osint` does, and it must say so visibly when it runs.
+  network call (IMAP talks to the user's own mail server, nothing else).
+  Only `osint/network/` does, only from a click in the OSINT screen, and
+  the screen says what it will contact before it runs. The renderer's
+  CSP allows it no network at all; requests go from the main process.
 - The vault has no delete method anywhere in its API. "Hide" is a UI-only
   view-state flag.
 - The OSINT gate (`osint/unlock.ts`) is friction against casual misuse, not

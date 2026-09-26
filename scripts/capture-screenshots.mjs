@@ -4,14 +4,10 @@
 //
 //   npm run build && node scripts/capture-screenshots.mjs
 //
-// One step is not something a user can do: no classifier model ships with
-// the app, so nothing can mark a message as over the abuse threshold. This
-// script sets that flag directly in the demo vault for one sender, so the
-// triage High band and the OSINT screen (which is gated on that flag) can be
-// shown. The README caption says so.
+// Every band and reason in these screenshots comes from the app itself,
+// including the shipped toxicity model scoring the demo messages.
 import { _electron as electron } from "@playwright/test";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,7 +34,7 @@ const messages = [
   sms(OLD_NUMBER, "2024-02-06T01:10:00Z", "Please stop contacting me. Only message me about pickup times.", true),
   sms(NEW_NUMBER, "2024-04-11T22:31:00Z", "hey it's me. you really thought blocking 555-123-4567 would actually change anything"),
   sms(NEW_NUMBER, "2024-04-12T03:02:00Z", "i am not going away and you should really just answer me because like i actually know where you are staying now"),
-  sms(NEW_NUMBER, "2024-04-12T03:09:00Z", "you can't hide from me. answer the phone"),
+  sms(NEW_NUMBER, "2024-04-12T03:09:00Z", "you can't hide from me. answer the phone or I will hurt you"),
   sms(COPARENT, "2024-04-10T16:20:00Z", "Pickup is at 5:30 on Friday. I'll bring her backpack and the permission slip."),
   sms(COPARENT, "2024-04-10T16:45:00Z", "Thanks, 5:30 works.", true),
   sms(COWORKER, "2024-04-09T14:02:00Z", "did you get the slides for tomorrow's meeting?"),
@@ -99,18 +95,11 @@ async function shot(window, name) {
   await app.close();
 }
 
-// The one step a user can't do today (see the note at the top).
-const vaultDb = findFile(dir, "vault.db");
-execFileSync(join(root, "node_modules", ".bin", "electron"), [
-  "-e",
-  `const db = new (require(${JSON.stringify(join(root, "node_modules", "better-sqlite3"))}))(${JSON.stringify(vaultDb)});
-   db.prepare("UPDATE messages SET crosses_abuse_threshold = 1, toxicity_score = 0.86 WHERE sender = ?").run(${JSON.stringify(NEW_NUMBER)});
-   db.close();`,
-], { env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" } });
-
-// Session 2: triage, OSINT, vault.
+// Session 2: triage, OSINT, vault. The model scores the import in the
+// background after unlock; wait for it before capturing.
 {
   const { app, window } = await open();
+  await window.waitForFunction(async () => (await window.docket.scoring.status()).state === "ready", undefined, { timeout: 30_000 });
 
   await window.locator(".message-row", { hasText: NEW_NUMBER }).first().click();
   await shot(window, "triage");
@@ -130,15 +119,3 @@ execFileSync(join(root, "node_modules", ".bin", "electron"), [
 }
 
 rmSync(dir, { recursive: true, force: true });
-
-function findFile(start, name) {
-  for (const entry of readdirSync(start)) {
-    const path = join(start, entry);
-    if (entry === name) return path;
-    if (statSync(path).isDirectory()) {
-      const found = findFile(path, name);
-      if (found) return found;
-    }
-  }
-  return undefined;
-}

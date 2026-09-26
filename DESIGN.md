@@ -199,6 +199,37 @@ ever built, and is treated as its own future decision, not bundled here.
 Explicit copy states results can't enter an evidence export — matches the
 structural code-level barrier, not just a UI suggestion.
 
+**Online checks (decided 2026-09-25 by the project owner, reversing the
+local-only part of the decision above).** Two checks, chosen from four
+offered (phone line type and email exposure were turned down):
+
+- **Links in their messages.** Built-in IP-logger and shortener lists
+  run offline and show as soon as the screen opens. "Check against
+  public threat lists" downloads five public lists whole (two IP-logger
+  lists, two URLhaus lists, OpenPhish) and matches on the device. A link
+  from a message is never opened, expanded, previewed, or sent anywhere:
+  opening an IP-logging link hands the victim's location to the sender,
+  and even a shortener's redirect counts as a click its owner can see.
+  URLhaus's lookup API now needs an account key, and the downloaded list
+  is more private anyway. The GPL IP-logger lists are downloaded, not
+  copied into the repository.
+- **Where does a username exist?** Asks 19 sites directly whether a
+  handle is taken. Each site was kept only after answering differently
+  for real and random handles on 2026-09-25. Sites that answer the same
+  for every handle without a login are named as "not checked" so their
+  absence never reads as "not found", and anything unexpected is
+  "couldn't tell", never "not found". Every result says a taken name
+  isn't the same person.
+
+What limits them: both stay behind the abuse-threshold gate; each runs
+only on a click; the screen names what it contacts before the click
+(the "generates internet traffic" rule from the plan, now true here);
+requests go from the main process, so the renderer's CSP still allows no
+network; tests use a fake network and never depend on third-party sites.
+This is closer to search-mode than verify-mode for usernames. The owner
+decided that trade-off; the gate and the per-result caveat are what's
+left of the earlier reasoning.
+
 **Known accounts (added 2026-09-24 — see TODOS.md item 19):** the most
 common pattern this app sees is not a stranger. It is someone the user
 already blocked who comes back from a new number or a new account. So
