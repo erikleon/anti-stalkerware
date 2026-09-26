@@ -9,7 +9,6 @@ release/
 *.db
 *.db-wal
 *.db-shm
-models/
 test-results/
 playwright-report/
 coverage/
@@ -18,3 +17,6 @@ coverage/
 .env
 *.pem
 *.key
+
+# Downloaded model files (see models/*.json for what and from where)
+models/*/

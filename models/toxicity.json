@@ -1,0 +1,30 @@
+{
+  "$comment": "The toxicity model docket ships. scripts/fetch-model.mjs downloads these exact files into models/toxicity/ and checks each hash; the packaged app bundles them. Change the revision and hashes together, never one without the other.",
+  "id": "minuva/MiniLMv2-toxic-jigsaw-onnx",
+  "license": "Apache-2.0",
+  "source": "https://huggingface.co/minuva/MiniLMv2-toxic-jigsaw-onnx",
+  "revision": "c035f27b6a6d68770f8069a4829f1715a48b8d51",
+  "model": "model_optimized_quantized.onnx",
+  "files": [
+    {
+      "name": "model_optimized_quantized.onnx",
+      "sha256": "bcd9dfb48cad802ac8f7cd789e1294f1f0b22d532797bd41f5a11694e3c269a0",
+      "bytes": 22864978
+    },
+    {
+      "name": "tokenizer.json",
+      "sha256": "91f1def9b9391fdabe028cd3f3fcc4efd34e5d1f08c3bf2de513ebb5911a1854",
+      "bytes": 711649
+    },
+    {
+      "name": "tokenizer_config.json",
+      "sha256": "0b29c7bfc889e53b36d9dd3e686dd4300f6525110eaa98c76a5dafceb2029f53",
+      "bytes": 1242
+    },
+    {
+      "name": "config.json",
+      "sha256": "b88eee194c1b62a0163979f1b3eab319817e5e51a358b15edebb867b03c7c9e9",
+      "bytes": 1007
+    }
+  ]
+}
