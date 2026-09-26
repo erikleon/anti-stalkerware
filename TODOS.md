@@ -858,6 +858,20 @@ and others are named as "not checked". A live run: the 16 major sites in
 failing (a connection error, a bot block): some failures are temporary,
 which is why the weekly job opens a pull request for a person to review.
 
+**Found on the first weekly run (from GitHub's servers):** 20 shipped rules
+failed there against 2 from a home connection, because many sites block
+data-center addresses. Skipping all of them would have turned off sites
+that work for users. The weekly check now skips only rules that give
+**wrong** answers (every known account reported missing, or a random
+name reported found); rules that merely couldn't answer stay, since in
+the app they show an honest "couldn't tell". The report lists both
+groups separately.
+
+Open: the workflow's pull request step fails until the repository allows
+it ("Settings → Actions → General → Allow GitHub Actions to create and
+approve pull requests"). Left for the owner to decide; it changes the
+repository's security settings.
+
 Changes from the plan, found while building:
 - **Redirects are never followed.** WhatsMyName's checker doesn't follow
   them and 75 rules read a 3xx status as the answer. Safer, too: a site
