@@ -213,13 +213,30 @@ offered (phone line type and email exposure were turned down):
   URLhaus's lookup API now needs an account key, and the downloaded list
   is more private anyway. The GPL IP-logger lists are downloaded, not
   copied into the repository.
-- **Where does a username exist?** Asks 19 sites directly whether a
-  handle is taken. Each site was kept only after answering differently
-  for real and random handles on 2026-09-25. Sites that answer the same
-  for every handle without a login are named as "not checked" so their
-  absence never reads as "not found", and anything unexpected is
-  "couldn't tell", never "not found". Every result says a taken name
-  isn't the same person.
+- **Where does a username exist?** Rules come from WhatsMyName
+  (CC BY-SA 4.0), pinned by commit and hash and bundled; the screen
+  shows the source, license, commit, and test date (TODOS.md item 25,
+  planned 2026-09-26). Two steps: "Check 16 major platforms" names every
+  site it contacts, and major platforms whose rules failed testing are
+  named as "not checked"; "Check all N sites" is a separate button with
+  its own paragraph (count per category, up to 3 minutes). Dating,
+  adult, health, and political sites are off unless a checkbox says
+  otherwise, because a match there says something private about
+  whoever owns the name. While running: "Checking X of N…", found sites
+  appearing as they answer, and a Stop button. Results: found first
+  with the profile address as text (never a link), then "couldn't tell"
+  and "no account" collapsed with reasons. Every result says a taken
+  name isn't the same person.
+
+  How a rule is trusted: every rule is validated when loaded (https to a
+  public host only; the handle in a host only as a subdomain of a fixed
+  domain; allowlisted headers only) and tested with a real handle and
+  two random ones, twice, before it ships (290 of about 650 passed on
+  2026-09-26). Redirects are never followed: like WhatsMyName's own
+  checker, the first answer is the answer, which also means a site can't
+  send a request anywhere else. A weekly job re-tests shipped rules and
+  opens a pull request adding broken ones to a remove-only skip list the
+  app downloads before each check.
 
 What limits them: both stay behind the abuse-threshold gate; each runs
 only on a click; the screen names what it contacts before the click

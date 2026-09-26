@@ -828,7 +828,7 @@ Open: docket has no license file. The downloaded IP-logger lists are GPL,
 which is one reason they're downloaded rather than copied in; choosing a
 license for docket itself is the owner's call.
 
-## 25. WhatsMyName username check (planned 2026-09-26)
+## 25. ~~WhatsMyName username check~~ DONE 2026-09-26
 
 Reviewed with /plan-eng-review plus an outside review (Codex). Plan:
 `~/.claude/plans/2026-09-26-whatsmyname.md`. Replaces the 19 hand rules
@@ -836,7 +836,44 @@ in `username-presence.ts` with the pinned, bundled, verified WhatsMyName
 dataset; major platforms by default, a separate "check all" sweep with
 adaptive concurrency; sensitive categories opt-in; a weekly verification
 job and a remove-only skip list. Test plan:
-`qa-reports/test-plan-whatsmyname-2026-09-25.md`. Not built yet.
+`qa-reports/test-plan-whatsmyname-2026-09-25.md`.
+
+**Built the same day.** `scripts/fetch-assets.mjs` (every manifest in
+`models/`, strictly validated: two allowed sources, full commit hashes,
+plain file names, size limits); `src/osint/network/whatsmyname.ts` (load,
+validate, build requests, classify like the upstream checker);
+`verify-rules.ts` + `scripts/verify-whatsmyname.mjs`;
+`username-check.ts` (tier selection, remote skip list, adaptive
+scheduler); `src/main/username-check-service.ts` (one check at a time,
+progress events, Stop, stops when the vault locks); the OSINT screen;
+`.github/workflows/whatsmyname-weekly.yml`.
+
+Verification on 2026-09-26: 290 of about 650 rules passed. It dropped
+rules that would have lied, e.g. Instagram's rule said `cristiano`
+doesn't exist, and X's rule now answers 200 for random handles. 16 of 30
+major platforms passed; Instagram, Facebook, X, Snapchat, Reddit, Venmo,
+and others are named as "not checked". A live run: the 16 major sites in
+0.9 s; the 265-site sweep in 35 s at adaptive speed, 11 "couldn't tell"
+(4%). A `--check` run an hour after verification found 2 more rules
+failing (a connection error, a bot block): some failures are temporary,
+which is why the weekly job opens a pull request for a person to review.
+
+Changes from the plan, found while building:
+- **Redirects are never followed.** WhatsMyName's checker doesn't follow
+  them and 75 rules read a 3xx status as the answer. Safer, too: a site
+  can't move the request anywhere else.
+- **The handle may be in the host** as a subdomain of a fixed domain
+  (`{account}.tumblr.com`, 22 rules), since the request still can't leave
+  that site's domain.
+- **"user-agent" protection is allowed**: it only means the site blocks
+  non-browser clients, and docket sends a browser identity (GitHub's rule
+  has it and passes).
+- **A POST rule with no profile page shows no link** instead of its API
+  address.
+
+Verified: unit tests for fetch-assets (12), the engine (43), verification
+(7), the scheduler (13), and the service (7); `osint-online.spec.ts`
+(no network); a packaged macOS build loading the bundled rules.
 
 ## 26. Choose a license for docket
 

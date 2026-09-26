@@ -65,8 +65,11 @@ tested. The Electron app runs a real flow end to end:
   after saying what it contacts: flag IP-logging, malicious, and phishing
   links in their messages (built-in lists offline; public lists
   downloaded and matched on the device — a link is never opened or sent),
-  and check which of 19 named sites a username exists on. Every result is
-  an unverified lead. `profile-photo-match` stays unbuilt — see TODOS.md.
+  and check where a username exists: 16 named major platforms by default,
+  or a sweep of every WhatsMyName site that passed docket's testing
+  (about 265; dating, adult, health, and political sites only if you
+  tick a box). Every result is an unverified lead. `profile-photo-match`
+  stays unbuilt — see TODOS.md.
 - **Known accounts** — the accounts you know belong to someone
   harassing you, usually ones you blocked. Import them from this Mac's
   Messages block list or an Instagram export's block list, or type them
