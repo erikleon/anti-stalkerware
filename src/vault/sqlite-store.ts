@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import type { Message, QuarantinedRecord, RawRecord } from "../types/message";
-import type { AppendClassification, ThreadSummary, VaultStore } from "./store";
+import type { AppendClassification, ThreadSummary, UnscoredMessage, VaultStore } from "./store";
 import type { VaultKey } from "./crypto";
 
 /**
@@ -16,6 +16,17 @@ import type { VaultKey } from "./crypto";
  * row sharing the same message_id with a different raw_record_hash —
  * history accumulates, nothing is replaced.
  */
+/**
+ * Every message row with its effective score: the model score from
+ * message_scores when one exists, otherwise the score it was appended with.
+ */
+const EFFECTIVE_SCORES = `
+  SELECT m.message_id, m.thread_id, m.sender, m.from_self,
+         COALESCE(s.toxicity_score, m.toxicity_score) AS toxicity_score,
+         COALESCE(s.crosses_abuse_threshold, m.crosses_abuse_threshold) AS crosses_abuse_threshold
+  FROM messages m
+  LEFT JOIN message_scores s ON s.message_id = m.message_id AND s.raw_record_hash = m.raw_record_hash`;
+
 export class SqliteVaultStore implements VaultStore {
   /**
    * Takes an already-open connection rather than a file path, so the
@@ -69,6 +80,21 @@ export class SqliteVaultStore implements VaultStore {
         source TEXT NOT NULL,
         reason TEXT NOT NULL,
         quarantined_at TEXT NOT NULL
+      );
+    `);
+    // Model scores live in their own table so the messages table stays
+    // append-only: a score is derived metadata a newer model can replace,
+    // not evidence. Only vault/message-scores.ts writes to it. A row here
+    // takes priority over the score a message was appended with.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS message_scores (
+        message_id TEXT NOT NULL,
+        raw_record_hash TEXT NOT NULL,
+        toxicity_score REAL NOT NULL,
+        crosses_abuse_threshold INTEGER NOT NULL,
+        label TEXT,
+        scored_by TEXT NOT NULL,
+        PRIMARY KEY (message_id, raw_record_hash)
       );
     `);
   }
@@ -152,6 +178,10 @@ export class SqliteVaultStore implements VaultStore {
            m.sent_at AS latest_sent_at,
            agg.message_count AS message_count,
            agg.max_toxicity_score AS max_toxicity_score,
+           (SELECT s.label FROM messages x
+              JOIN message_scores s ON s.message_id = x.message_id AND s.raw_record_hash = x.raw_record_hash
+              WHERE x.thread_id = m.thread_id AND s.label IS NOT NULL
+              ORDER BY s.toxicity_score DESC LIMIT 1) AS max_toxicity_label,
            agg.crosses_abuse_threshold AS crosses_abuse_threshold
          FROM messages m
          INNER JOIN (
@@ -160,12 +190,12 @@ export class SqliteVaultStore implements VaultStore {
            GROUP BY thread_id
          ) latest ON latest.thread_id = m.thread_id AND latest.latest_rowid = m.rowid
          INNER JOIN (
-           SELECT thread_id,
-                  COUNT(DISTINCT message_id) AS message_count,
-                  MAX(toxicity_score) AS max_toxicity_score,
-                  MAX(crosses_abuse_threshold) AS crosses_abuse_threshold
-           FROM messages
-           GROUP BY thread_id
+           SELECT e.thread_id,
+                  COUNT(DISTINCT e.message_id) AS message_count,
+                  MAX(e.toxicity_score) AS max_toxicity_score,
+                  MAX(e.crosses_abuse_threshold) AS crosses_abuse_threshold
+           FROM (${EFFECTIVE_SCORES}) e
+           GROUP BY e.thread_id
          ) agg ON agg.thread_id = m.thread_id
          ORDER BY m.sent_at DESC`,
       )
@@ -179,7 +209,24 @@ export class SqliteVaultStore implements VaultStore {
       latestSentAt: new Date(row.latest_sent_at),
       messageCount: row.message_count,
       maxToxicityScore: row.max_toxicity_score,
+      ...(row.max_toxicity_label ? { maxToxicityLabel: row.max_toxicity_label } : {}),
       crossesAbuseThreshold: row.crosses_abuse_threshold === 1,
+    }));
+  }
+
+  async listUnscored(scoredBy: string, limit: number): Promise<UnscoredMessage[]> {
+    const rows = this.db
+      .prepare(
+        `SELECT m.message_id, m.raw_record_hash, m.text FROM messages m
+         LEFT JOIN message_scores s ON s.message_id = m.message_id AND s.raw_record_hash = m.raw_record_hash
+         WHERE m.from_self = 0 AND (s.scored_by IS NULL OR s.scored_by != ?)
+         ORDER BY m.rowid LIMIT ?`,
+      )
+      .all(scoredBy, limit) as Array<{ message_id: string; raw_record_hash: string; text: Buffer }>;
+    return rows.map((row) => ({
+      messageId: row.message_id,
+      rawRecordHash: row.raw_record_hash,
+      text: this.key.decrypt(row.text).toString("utf8"),
     }));
   }
 
@@ -198,7 +245,10 @@ export class SqliteVaultStore implements VaultStore {
 
   async isAbusiveSender(sender: string): Promise<boolean> {
     const row = this.db
-      .prepare(`SELECT 1 FROM messages WHERE sender = ? AND crosses_abuse_threshold = 1 LIMIT 1`)
+      // from_self = 0: on some sources (Android SMS) the user's own sent
+      // messages carry the other person's number as `sender`, and the
+      // user's own words must never mark someone else as abusive.
+      .prepare(`SELECT 1 FROM (${EFFECTIVE_SCORES}) e WHERE e.sender = ? AND e.from_self = 0 AND e.crosses_abuse_threshold = 1 LIMIT 1`)
       .get(sender);
     return row !== undefined;
   }
@@ -285,5 +335,6 @@ interface ThreadSummaryRow {
   latest_sent_at: string;
   message_count: number;
   max_toxicity_score: number;
+  max_toxicity_label: string | null;
   crosses_abuse_threshold: number;
 }

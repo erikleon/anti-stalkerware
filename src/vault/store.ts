@@ -12,6 +12,28 @@ export interface AppendClassification {
   crossesAbuseThreshold: boolean;
   /** Raw score backing crossesAbuseThreshold, kept alongside it so the triage UI can show a High/Medium band instead of a single cutoff. Optional so existing callers that only know the boolean don't break; defaults to 0 when absent. */
   toxicityScore?: number;
+  /** The model label that gave the score (e.g. "threat"), shown as the reason in triage. */
+  label?: string;
+}
+
+/** A message a background pass still has to score with the current model. */
+export interface UnscoredMessage {
+  messageId: string;
+  rawRecordHash: string;
+  text: string;
+}
+
+/**
+ * What a background scoring pass needs: find what the current model hasn't
+ * scored, and record a score. Scores are derived metadata, not evidence:
+ * the message, its raw bytes, and its hash never change. The two halves
+ * live in different classes (SqliteVaultStore reads, MessageScoreStore
+ * writes) so the messages table's store has no way to modify a row.
+ */
+export interface RescorableStore {
+  /** Messages from other people not yet scored by `scoredBy`. The user's own messages are never scored. */
+  listUnscored(scoredBy: string, limit: number): Promise<UnscoredMessage[]>;
+  setScore(messageId: string, rawRecordHash: string, classification: AppendClassification, scoredBy: string): void;
 }
 
 /**
@@ -30,6 +52,8 @@ export interface ThreadSummary {
   latestSentAt: Date;
   messageCount: number;
   maxToxicityScore: number;
+  /** The model label behind maxToxicityScore, when a model scored it. */
+  maxToxicityLabel?: string;
   crossesAbuseThreshold: boolean;
 }
 

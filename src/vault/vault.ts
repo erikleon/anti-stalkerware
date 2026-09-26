@@ -11,6 +11,8 @@ import { SourceConfigStore } from "./source-config";
 import { UserContextStore } from "./user-context";
 import { KnownAccountStore } from "./known-accounts";
 import { IncidentLogStore } from "./incident-log";
+import { MessageScoreStore } from "./message-scores";
+import type { RescorableStore } from "./store";
 import { localTimeZone } from "../time/local-time";
 
 const METADATA_FILENAME = "vault.meta.json";
@@ -47,6 +49,8 @@ export interface Vault {
   userContext: UserContextStore;
   knownAccounts: KnownAccountStore;
   incidentLog: IncidentLogStore;
+  /** The store and the score writer together, for the background scoring pass. */
+  scoring: RescorableStore;
   key: VaultKey;
   close(): void;
 }
@@ -87,6 +91,7 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
   const userContext = new UserContextStore(db, localTimeZone());
   const knownAccounts = new KnownAccountStore(db);
   const incidentLog = new IncidentLogStore(db, key);
+  const scores = new MessageScoreStore(db);
 
   return {
     store,
@@ -97,6 +102,10 @@ export async function openVault(vaultDir: string, passphrase: string): Promise<V
     userContext,
     knownAccounts,
     incidentLog,
+    scoring: {
+      listUnscored: (scoredBy, limit) => store.listUnscored(scoredBy, limit),
+      setScore: (messageId, rawRecordHash, classification, scoredBy) => scores.set(messageId, rawRecordHash, classification, scoredBy),
+    },
     key,
     close() {
       // store, credentials and integrityLog all share this one connection —

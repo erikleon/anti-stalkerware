@@ -24,7 +24,8 @@ export interface ClassificationResult {
 }
 
 export interface Classifier {
-  classify(message: Message): Promise<ClassificationResult>;
+  /** Only the text is read, so a caller with just the text doesn't have to build a whole Message. */
+  classify(message: Pick<Message, "text">): Promise<ClassificationResult>;
 }
 
 export const ABUSE_THRESHOLD = 0.7;
@@ -78,7 +79,7 @@ export async function loadOnnxSession(modelPath: string): Promise<OnnxSession> {
 export class OnnxToxicityClassifier implements Classifier {
   constructor(private readonly session: OnnxSession, private readonly config: OnnxClassifierConfig) {}
 
-  async classify(message: Message): Promise<ClassificationResult> {
+  async classify(message: Pick<Message, "text">): Promise<ClassificationResult> {
     const windows = this.config.tokenizer.encode(message.text);
     let best: { score: number; index: number } | undefined;
     for (const window of windows) {
