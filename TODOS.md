@@ -827,3 +827,62 @@ downloaded, all 19 sites answered.
 Open: docket has no license file. The downloaded IP-logger lists are GPL,
 which is one reason they're downloaded rather than copied in; choosing a
 license for docket itself is the owner's call.
+
+## 25. WhatsMyName username check (planned 2026-09-26)
+
+Reviewed with /plan-eng-review plus an outside review (Codex). Plan:
+`~/.claude/plans/2026-09-26-whatsmyname.md`. Replaces the 19 hand rules
+in `username-presence.ts` with the pinned, bundled, verified WhatsMyName
+dataset; major platforms by default, a separate "check all" sweep with
+adaptive concurrency; sensitive categories opt-in; a weekly verification
+job and a remove-only skip list. Test plan:
+`qa-reports/test-plan-whatsmyname-2026-09-25.md`. Not built yet.
+
+## 26. Choose a license for docket
+
+docket has no LICENSE file and no `license` in package.json. It already
+downloads GPL lists (item 24) and item 25 bundles CC BY-SA data with
+attribution. Without its own license, nobody can say what they may do
+with docket's code. Options: MIT or Apache-2.0 (permissive), GPL-3.0 or
+AGPL-3.0 (copyleft). The owner's decision; nothing blocks it.
+
+## 27. Proxy or Tor mode for OSINT online checks
+
+An optional Settings choice to send every OSINT online request (link
+lists, username sites, skip list) through a SOCKS proxy or Tor. Someone
+watching the victim's network (shared home Wi-Fi, a family router) can
+see which sites a check contacts, and each site sees the victim's IP.
+Raised by Codex during item 25's review. The main process can use a
+SOCKS agent; Tor needs the tor daemon or Tor Browser running, or a large
+bundled tor. Many sites block Tor exits, so more results would read
+"couldn't tell". Depends on item 25 (all requests go through
+`src/osint/network/http.ts`).
+
+## 28. Impersonation check: fake profiles in the victim's name
+
+A separate check where the victim enters their own name or handle and
+looks for accounts pretending to be them, including dating and adult
+sites. Fake profiles of the victim are a common harassment pattern, and
+it's the real use for the sensitive categories item 25 keeps opt-in; as
+a search about the victim, it doesn't expose an innocent stranger. Reuses
+item 25's engine; needs its own framing and what to do with a hit
+(per-platform report links, saving it to the incident log). Depends on
+item 25 and the incident log (item 22).
+
+## 29. Tools left out of the WhatsMyName change, and why
+
+Asked for on 2026-09-25 with WhatsMyName; left out in item 25's review:
+- **Sherlock** (MIT, 481 sites): a Python program; its site list
+  overlaps WhatsMyName heavily. Adding it means a second rule format to
+  parse and deduplicate for a small gain.
+- **Epieos**: email/phone lookup (Google account name, reviews, linked
+  profiles). API only on paid plans (about €19-49/month); it is the
+  email-exposure lookup declined on 2026-09-25. Would need the owner to
+  reverse that and a bring-your-own-key design.
+- **Social Searcher**: keyword search over public posts. No API on the
+  free plan; using the free website from the app would be scraping
+  against its terms.
+- **Other tools in tools.osintnewsletter.com** (17 categories): each needs
+  its own review against the rules this app now follows: never contact
+  the person looked up, no login or cookies, no scraping against a site's
+  terms, name every recipient before the click.
