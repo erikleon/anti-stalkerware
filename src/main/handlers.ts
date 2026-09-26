@@ -18,7 +18,9 @@ import { readInstagramBlocked } from "../ingest/instagram/blocked";
 import { expandHome } from "./paths";
 import { localTimeZone, resolveLocalDateTime, type LocalTimeResolution } from "../time/local-time";
 import type { ScoringService, ScoringStatus } from "./scoring";
-import { checkUsernamePresence, SITES, suggestHandles, UNCHECKABLE_SITES, type PresenceResult } from "../osint/network/username-presence";
+import { suggestHandles } from "../osint/network/username-presence";
+import type { CheckRequest } from "../osint/network/username-check";
+import type { StartedCheck, UsernameCheckService } from "./username-check-service";
 import { checkLinksOffline, checkLinksOnline, extractLinks, FEEDS, type FeedStatus, type LinkVerdict } from "../osint/network/link-safety";
 import type { Fetcher } from "../osint/network/http";
 import type { IncidentEntry } from "../vault/incident-log";
@@ -102,6 +104,7 @@ export function registerHandlers(
   mainWindow: BrowserWindow,
   hotkeyStatus: HotkeyStatus,
   scoring: ScoringService,
+  usernameChecks: UsernameCheckService,
 ): void {
   /** Runs an import, then scores what it added in the background. The import result never waits on the model. */
   async function importThenScore(run: () => Promise<SyncResult>): Promise<SyncResult> {
@@ -186,11 +189,14 @@ export function registerHandlers(
   const senderTexts = async (sender: string) =>
     (await messagesFromSender(requireVault(session).store, sender)).filter((m) => !m.fromSelf).map((m) => m.text);
 
-  bind<[], OsintNetworkInfo>(session, "osint:networkInfo", async () => ({
-    usernameSites: SITES.map((s) => s.name),
-    uncheckableSites: [...UNCHECKABLE_SITES],
-    linkFeeds: FEEDS.map((f) => ({ name: f.name, url: f.url })),
-  }));
+  bind<[], OsintNetworkInfo>(session, "osint:networkInfo", async () => {
+    const linkFeeds = FEEDS.map((f) => ({ name: f.name, url: f.url }));
+    try {
+      return { linkFeeds, username: await usernameChecks.info() };
+    } catch (err) {
+      return { linkFeeds, usernameError: (err as Error).message };
+    }
+  });
   bindGated<[string], LinkVerdict[]>("osint:linkReport", (sender) => sender, session, async (sender) =>
     checkLinksOffline(extractLinks(await senderTexts(sender))),
   );
@@ -204,9 +210,13 @@ export function registerHandlers(
       .map((a) => a.value);
     return suggestHandles(sender, await senderTexts(sender), knownUsernames);
   });
-  bindGated<[string, string], PresenceResult[]>("osint:checkUsername", (sender) => sender, session, async (_sender, handle) =>
-    checkUsernamePresence(handle, fetcher),
+  // Starts a check and returns at once; results arrive as
+  // osint:usernameProgress events. Stopping isn't gated: it only ever ends
+  // a check that the gate already let start.
+  bindGated<[string, CheckRequest], StartedCheck>("osint:startUsernameCheck", (sender) => sender, session, async (_sender, request) =>
+    usernameChecks.start(request),
   );
+  bind<[number], void>(session, "osint:stopUsernameCheck", async (checkId) => usernameChecks.stop(checkId));
 
   // The user's own list, not OSINT output — not gated. Adding an account
   // here looks nothing up; it only records what the user already knows.

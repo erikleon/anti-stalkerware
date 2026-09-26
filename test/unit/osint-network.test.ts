@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Fetcher } from "../../src/osint/network/http";
-import { checkUsernamePresence, normalizeHandle, suggestHandles, SITES, type SiteCheck } from "../../src/osint/network/username-presence";
+import { normalizeHandle, suggestHandles } from "../../src/osint/network/username-presence";
 import { checkLinksOffline, checkLinksOnline, clearFeedCache, extractLinks, FEEDS, parseFeed } from "../../src/osint/network/link-safety";
 
 /** A fetcher that answers from a table and records every URL it was asked for. */
@@ -29,44 +29,6 @@ describe("normalizeHandle", () => {
     for (const bad of ["a", "alex b", "alex/../../x", "alex?x=1", "alex#frag", "x".repeat(41), "", "-alex"]) {
       expect(normalizeHandle(bad)).toBeUndefined();
     }
-  });
-});
-
-describe("checkUsernamePresence", () => {
-  const github = SITES.find((s) => s.name === "GitHub")!;
-  const telegram = SITES.find((s) => s.name === "Telegram")!;
-
-  it("reports found, not found, and couldn't tell per site, with the profile link", async () => {
-    const fetcher = fakeFetcher({
-      "https://api.github.com/users/alex_b": { status: 200 },
-      "https://t.me/alex_b": { status: 200, body: "<html>no such page</html>" },
-    });
-    const flaky: SiteCheck = { name: "Flaky", requestUrl: () => "https://flaky.example/alex_b", profileUrl: () => "https://flaky.example/alex_b", read: () => undefined };
-    const results = await checkUsernamePresence("@alex_b", fetcher, [github, telegram, flaky]);
-    expect(results).toEqual([
-      { site: "GitHub", profileUrl: "https://github.com/alex_b", status: "found" },
-      { site: "Telegram", profileUrl: "https://t.me/alex_b", status: "not-found" },
-      { site: "Flaky", profileUrl: "https://flaky.example/alex_b", status: "unknown", detail: "unexpected answer (HTTP 404)" },
-    ]);
-  });
-
-  it("calls a timeout 'couldn't tell', never 'not found'", async () => {
-    const fetcher = fakeFetcher({ "https://api.github.com/users/alex_b": "timeout" });
-    const [result] = await checkUsernamePresence("alex_b", fetcher, [github]);
-    expect(result).toMatchObject({ status: "unknown", detail: "timed out" });
-  });
-
-  it("refuses an invalid handle before sending anything", async () => {
-    const fetcher = fakeFetcher({});
-    await expect(checkUsernamePresence("not a handle", fetcher)).rejects.toThrow(/isn't a username/);
-    expect(fetcher.requested).toEqual([]);
-  });
-
-  it("only ever requests the site's own URL for the handle", async () => {
-    const fetcher = fakeFetcher({});
-    await checkUsernamePresence("alex_b", fetcher);
-    expect(fetcher.requested).toHaveLength(SITES.length);
-    expect(fetcher.requested.every((url) => url.includes("alex_b"))).toBe(true);
   });
 });
 

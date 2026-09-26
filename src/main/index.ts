@@ -4,6 +4,8 @@ import { VaultSession } from "./vault-session";
 import { SettingsStore } from "./settings-store";
 import { registerHandlers } from "./handlers";
 import { ScoringService } from "./scoring";
+import { UsernameCheckService } from "./username-check-service";
+import type { Fetcher, PageFetcher } from "../osint/network/http";
 
 // Neutral product name and icon are set at the packaging level (electron-builder
 // config, not here) — nothing in this file should print or log the product's
@@ -120,7 +122,12 @@ app.whenReady().then(() => {
   // by `npm run fetch-assets`.
   const modelsDir = app.isPackaged ? path.join(process.resourcesPath, "models") : path.join(app.getAppPath(), "models");
   const scoring = new ScoringService(modelsDir, () => session.current(), (status) => window.webContents.send("scoring:changed", status));
-  registerHandlers(session, settings, window, { registered: hotkeyRegistered, label: PANIC_HOTKEY_LABEL }, scoring);
+  // Node's fetch satisfies both shapes; the narrower types keep tests free of real network.
+  const usernameChecks = new UsernameCheckService(modelsDir, () => session.current(), (progress) => window.webContents.send("osint:usernameProgress", progress), {
+    page: fetch as unknown as PageFetcher,
+    text: fetch as unknown as Fetcher,
+  });
+  registerHandlers(session, settings, window, { registered: hotkeyRegistered, label: PANIC_HOTKEY_LABEL }, scoring, usernameChecks);
   registerAutoLock(session, settings, mainWindow);
 
   app.on("before-quit", () => session.lock());

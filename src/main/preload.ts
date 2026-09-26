@@ -46,7 +46,13 @@ const api: DocketApi = {
     linkReport: (sender) => ipcRenderer.invoke("osint:linkReport", sender),
     checkLinksOnline: (sender) => ipcRenderer.invoke("osint:checkLinksOnline", sender),
     usernameSuggestions: (sender) => ipcRenderer.invoke("osint:usernameSuggestions", sender),
-    checkUsername: (sender, handle) => ipcRenderer.invoke("osint:checkUsername", sender, handle),
+    startUsernameCheck: (sender, request) => ipcRenderer.invoke("osint:startUsernameCheck", sender, request),
+    stopUsernameCheck: (checkId) => ipcRenderer.invoke("osint:stopUsernameCheck", checkId),
+    onUsernameProgress: (callback) => {
+      const listener = (_event: unknown, progress: Parameters<typeof callback>[0]) => callback(progress);
+      ipcRenderer.on("osint:usernameProgress", listener);
+      return () => ipcRenderer.removeListener("osint:usernameProgress", listener);
+    },
   },
   knownAccounts: {
     list: () => ipcRenderer.invoke("knownAccounts:list"),

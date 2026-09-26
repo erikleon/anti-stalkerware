@@ -45,7 +45,8 @@ export interface SiteRule {
   /** Dating, adult, health, or political: checked only when the user opts in. */
   sensitive: boolean;
   uriCheck: string;
-  uriPretty: string;
+  /** The public profile page. Absent for a rule that asks an API by POST and names no profile page. */
+  uriPretty?: string;
   postBody?: string;
   headers: Record<string, string>;
   stripBadChar: string;
@@ -128,7 +129,8 @@ export function parseRules(data: unknown): { rules: SiteRule[]; dropped: Dropped
       category: raw.cat,
       sensitive: SENSITIVE_CATEGORIES.has(raw.cat),
       uriCheck: raw.uri_check,
-      uriPretty: raw.uri_pretty ?? raw.uri_check,
+      // A GET check URL is usually the profile page itself; a POST one is an API.
+      ...(raw.uri_pretty ? { uriPretty: raw.uri_pretty } : raw.post_body === undefined ? { uriPretty: raw.uri_check } : {}),
       ...(raw.post_body !== undefined ? { postBody: raw.post_body } : {}),
       headers: raw.headers ?? {},
       stripBadChar: raw.strip_bad_char ?? "",
@@ -157,7 +159,8 @@ export function buildRequest(rule: SiteRule, handle: string): PageRequest | unde
     : { url, method: "GET", headers: rule.headers };
 }
 
-export function profileUrl(rule: SiteRule, handle: string): string {
+export function profileUrl(rule: SiteRule, handle: string): string | undefined {
+  if (!rule.uriPretty) return undefined;
   const cleaned = [...handle].filter((c) => !rule.stripBadChar.includes(c)).join("");
   return rule.uriPretty.replaceAll(PLACEHOLDER, encodeURIComponent(cleaned));
 }

@@ -18,7 +18,8 @@ import type { KnownAccountKind, StoredKnownAccount } from "../vault/known-accoun
 import type { IncidentEntry } from "../vault/incident-log";
 import type { LocalTimeResolution } from "../time/local-time";
 import type { ScoringStatus } from "./scoring";
-import type { PresenceResult } from "../osint/network/username-presence";
+import type { CheckRequest, NotChecked, SiteOutcome } from "../osint/network/username-check";
+import type { StartedCheck, UsernameCheckInfo, UsernameProgress } from "./username-check-service";
 import type { FeedStatus, LinkVerdict } from "../osint/network/link-safety";
 
 export type {
@@ -33,15 +34,21 @@ export type {
   IncidentEntry,
   LocalTimeResolution,
   ScoringStatus,
-  PresenceResult,
+  CheckRequest,
+  NotChecked,
+  SiteOutcome,
+  StartedCheck,
+  UsernameCheckInfo,
+  UsernameProgress,
   FeedStatus,
   LinkVerdict,
 };
 
 /** What the online OSINT checks contact, for the disclosure shown before each one runs. */
 export interface OsintNetworkInfo {
-  usernameSites: string[];
-  uncheckableSites: string[];
+  /** The username check's sites and attribution; absent when its bundled rules couldn't load (usernameError says why). */
+  username?: UsernameCheckInfo;
+  usernameError?: string;
   linkFeeds: Array<{ name: string; url: string }>;
 }
 
@@ -193,8 +200,11 @@ export interface DocketApi {
     checkLinksOnline(sender: string): Promise<{ verdicts: LinkVerdict[]; feeds: FeedStatus[] }>;
     /** Handles worth checking: @mentions in the sender's messages, a handle-like sender, known-account usernames. */
     usernameSuggestions(sender: string): Promise<string[]>;
-    /** Asks each site in networkInfo().usernameSites whether the handle exists there. */
-    checkUsername(sender: string, handle: string): Promise<PresenceResult[]>;
+    /** Starts a username check (one at a time; starting another stops this one). Results arrive through onUsernameProgress. */
+    startUsernameCheck(sender: string, request: CheckRequest): Promise<StartedCheck>;
+    stopUsernameCheck(checkId: number): Promise<void>;
+    /** Fires as each site answers, and once more with finished: true. Returns an unsubscribe function. */
+    onUsernameProgress(callback: (progress: UsernameProgress) => void): () => void;
   };
   knownAccounts: {
     list(): Promise<StoredKnownAccount[]>;

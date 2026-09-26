@@ -36,7 +36,8 @@ export type SiteStatus = "found" | "not-found" | "unknown";
 export interface SiteOutcome {
   site: string;
   category: string;
-  profileUrl: string;
+  /** Absent when the site has no public profile page to point at. */
+  profileUrl?: string;
   status: SiteStatus;
   /** For "unknown": why. */
   detail?: string;
@@ -124,8 +125,13 @@ const sleep: Sleep = (ms, signal) =>
     }, { once: true });
   });
 
+function outcomeBase(rule: SiteRule, handle: string): Pick<SiteOutcome, "site" | "category" | "profileUrl"> {
+  const url = profileUrl(rule, handle);
+  return { site: rule.name, category: rule.category, ...(url ? { profileUrl: url } : {}) };
+}
+
 async function checkSite(fetcher: PageFetcher, rule: SiteRule, handle: string, signal: AbortSignal): Promise<SiteOutcome> {
-  const base = { site: rule.name, category: rule.category, profileUrl: profileUrl(rule, handle) };
+  const base = outcomeBase(rule, handle);
   const request = buildRequest(rule, handle);
   if (!request) return { ...base, status: "unknown", detail: "this site doesn't allow the characters in that name" };
   const page = await fetchPage(fetcher, request, signal);
@@ -181,7 +187,7 @@ export async function runCheck(
         if (controller.signal.aborted && running === 0) {
           const why = controller.signal.reason === "timeout" ? "out of time" : "stopped";
           for (const rule of queue.splice(0)) {
-            report({ site: rule.name, category: rule.category, profileUrl: profileUrl(rule, handle), status: "unknown", detail: why });
+            report({ ...outcomeBase(rule, handle), status: "unknown", detail: why });
           }
         }
         if (queue.length === 0 && running === 0) resolve();
@@ -194,7 +200,7 @@ export async function runCheck(
           const [low, high] = schedule.jitterMs;
           await wait(low + random() * (high - low), controller.signal);
           const outcome = controller.signal.aborted
-            ? { site: rule.name, category: rule.category, profileUrl: profileUrl(rule, handle), status: "unknown" as const, detail: controller.signal.reason === "timeout" ? "out of time" : "stopped" }
+            ? { ...outcomeBase(rule, handle), status: "unknown" as const, detail: controller.signal.reason === "timeout" ? "out of time" : "stopped" }
             : await checkSite(fetcher, rule, handle, controller.signal);
           running--;
           busyHosts.delete(host);

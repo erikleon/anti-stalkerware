@@ -88,6 +88,8 @@ describe("buildRequest", () => {
     expect(buildRequest(rule, "a.b_c")?.url).toBe("https://example.com/u/abc");
     expect(buildRequest(rule, "._")).toBeUndefined();
     expect(profileUrl(onlyRule({ uri_pretty: "https://example.com/@{account}" }), "alex")).toBe("https://example.com/@alex");
+    // A POST API with no profile page gets no link, not the API's address.
+    expect(profileUrl(onlyRule({ post_body: '{"u":"{account}"}', headers: { "Content-Type": "application/json" } }), "alex")).toBeUndefined();
   });
 });
 
