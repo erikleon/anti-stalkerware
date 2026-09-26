@@ -18,10 +18,12 @@ function msg(text: string): Message {
 }
 
 const fakeTokenizer: Tokenizer = {
-  encode: (text) => ({
-    inputIds: text.split(" ").map((_, i) => BigInt(i + 1)),
-    attentionMask: text.split(" ").map(() => 1n),
-  }),
+  encode: (text) => [
+    {
+      inputIds: text.split(" ").map((_, i) => BigInt(i + 1)),
+      attentionMask: text.split(" ").map(() => 1n),
+    },
+  ],
 };
 
 function baseConfig(overrides: Partial<OnnxClassifierConfig> = {}): OnnxClassifierConfig {
@@ -29,8 +31,8 @@ function baseConfig(overrides: Partial<OnnxClassifierConfig> = {}): OnnxClassifi
     tokenizer: fakeTokenizer,
     inputNames: { inputIds: "input_ids", attentionMask: "attention_mask" },
     outputName: "logits",
-    toxicClassIndex: 1,
-    outputIsLogits: false,
+    activation: "none",
+    scoreIndices: [1],
     ...overrides,
   };
 }
@@ -65,14 +67,14 @@ describe("OnnxToxicityClassifier", () => {
   it("applies softmax when the model outputs raw logits", async () => {
     // Large logit gap should softmax to something close to (0, 1).
     const session = fakeSession({ logits: { data: [-10, 10] } });
-    const classifier = new OnnxToxicityClassifier(session, baseConfig({ outputIsLogits: true }));
+    const classifier = new OnnxToxicityClassifier(session, baseConfig({ activation: "softmax" }));
     const result = await classifier.classify(msg("test"));
     expect(result.toxicityScore).toBeGreaterThan(0.99);
   });
 
-  it("respects a configured toxicClassIndex other than 1", async () => {
+  it("respects a configured score index other than 1", async () => {
     const session = fakeSession({ logits: { data: [0.8, 0.2] } });
-    const classifier = new OnnxToxicityClassifier(session, baseConfig({ toxicClassIndex: 0 }));
+    const classifier = new OnnxToxicityClassifier(session, baseConfig({ scoreIndices: [0] }));
     const result = await classifier.classify(msg("test"));
     expect(result.toxicityScore).toBe(0.8);
   });
@@ -107,10 +109,47 @@ describe("OnnxToxicityClassifier", () => {
     await expect(classifier.classify(msg("test"))).rejects.toThrow(/no tensor named "logits"/);
   });
 
-  it("throws a clear error when toxicClassIndex is out of range", async () => {
+  it("throws a clear error when a score index is out of range", async () => {
     const session = fakeSession({ logits: { data: [0.5, 0.5] } });
-    const classifier = new OnnxToxicityClassifier(session, baseConfig({ toxicClassIndex: 5 }));
+    const classifier = new OnnxToxicityClassifier(session, baseConfig({ scoreIndices: [5] }));
     await expect(classifier.classify(msg("test"))).rejects.toThrow(/out of range/);
+  });
+
+  it("applies sigmoid per label for a multi-label model and reports the winning label", async () => {
+    // Logits for toxic, obscene, threat: only threat is confidently on.
+    const session = fakeSession({ logits: { data: [-3, 4, 3] } });
+    const classifier = new OnnxToxicityClassifier(
+      session,
+      baseConfig({ activation: "sigmoid", scoreIndices: [0, 2], labels: ["toxic", "obscene", "threat"] }),
+    );
+    const result = await classifier.classify(msg("test"));
+    // obscene (index 1) scores higher but isn't a score index, so it's ignored.
+    expect(result.label).toBe("threat");
+    expect(result.toxicityScore).toBeCloseTo(1 / (1 + Math.exp(-3)), 6);
+    expect(result.crossesAbuseThreshold).toBe(true);
+  });
+
+  it("scores every window of a long text and keeps the highest", async () => {
+    const windows: Tokenizer = { encode: () => [0, 1, 2].map((i) => ({ inputIds: [BigInt(i)], attentionMask: [1n] })) };
+    const scores = [0.1, 0.95, 0.2];
+    let call = 0;
+    const session: OnnxSession = { run: async () => ({ logits: { data: [0, scores[call++]!] } }) };
+    const result = await new OnnxToxicityClassifier(session, baseConfig({ tokenizer: windows })).classify(msg("long"));
+    expect(call).toBe(3);
+    expect(result.toxicityScore).toBe(0.95);
+  });
+
+  it("sends an all-zero token_type_ids tensor when the model takes one", async () => {
+    let captured: Record<string, Tensor> | undefined;
+    const session: OnnxSession = {
+      run: async (feeds) => {
+        captured = feeds;
+        return { logits: { data: [0.5, 0.5] } };
+      },
+    };
+    const config = baseConfig({ inputNames: { inputIds: "input_ids", attentionMask: "attention_mask", tokenTypeIds: "token_type_ids" } });
+    await new OnnxToxicityClassifier(session, config).classify(msg("two words"));
+    expect(Array.from(captured!["token_type_ids"]!.data as BigInt64Array)).toEqual([0n, 0n]);
   });
 
   it("throws a clear error when the output tensor is a string tensor", async () => {

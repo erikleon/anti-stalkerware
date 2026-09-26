@@ -11,17 +11,16 @@ import type { Message } from "../types/message";
  * boundaries are for — this classifier is a first-pass filter, not the
  * whole detector.
  *
- * No specific model is bundled or assumed here. Tokenization, tensor
- * names, and how to read the output are all injected rather than
- * hardcoded, because those are properties of whichever specific ONNX
- * model actually gets shipped — a decision this code deliberately doesn't
- * make on its own. Wiring up a real model means providing a Tokenizer
- * matching its vocabulary and an OnnxClassifierConfig matching its input/
- * output tensor names, not editing this file.
+ * Tokenization, tensor names, and how to read the output are injected
+ * rather than hardcoded, because they're properties of a specific ONNX
+ * model. The model docket ships is wired up in toxicity-model.ts; this
+ * file only runs whatever it's given.
  */
 export interface ClassificationResult {
   toxicityScore: number;
   crossesAbuseThreshold: boolean;
+  /** The output label that gave the score (e.g. "threat"), when the model names its labels. */
+  label?: string;
 }
 
 export interface Classifier {
@@ -35,9 +34,14 @@ export interface TokenizedInput {
   attentionMask: bigint[];
 }
 
-/** Turns text into model input. Model-specific (vocabulary, special tokens, max length) — provided by whoever wires up a real model, not this file. */
+/**
+ * Turns text into model input. Model-specific (vocabulary, special
+ * tokens, max length). Returns one window per model-length chunk of a
+ * long text, so nothing past the model's limit is silently cut off; the
+ * classifier scores every window and keeps the highest.
+ */
 export interface Tokenizer {
-  encode(text: string): TokenizedInput;
+  encode(text: string): TokenizedInput[];
 }
 
 /** The slice of onnxruntime-node's InferenceSession this classifier needs — narrow on purpose so tests can inject a fake session instead of a real model file. */
@@ -47,14 +51,23 @@ export interface OnnxSession {
 
 export interface OnnxClassifierConfig {
   tokenizer: Tokenizer;
-  /** Tensor names this specific model's graph expects as input. */
-  inputNames: { inputIds: string; attentionMask: string };
+  /** Tensor names this specific model's graph expects as input. `tokenTypeIds` is for BERT-style models that take one; it's always all zeros for a single text. */
+  inputNames: { inputIds: string; attentionMask: string; tokenTypeIds?: string };
   /** Tensor name this specific model's graph produces as output. */
   outputName: string;
-  /** Index into the output tensor's class dimension that means "toxic". Model-specific — not assumed to be 1 for every model. */
-  toxicClassIndex: number;
-  /** True if the output tensor holds raw logits needing softmax; false if it's already a probability distribution. */
-  outputIsLogits: boolean;
+  /**
+   * How to turn the output into probabilities: "softmax" for a
+   * single-label model's logits (the classes compete), "sigmoid" for a
+   * multi-label model's logits (each label is its own yes/no), "none" when
+   * the output already is probabilities.
+   */
+  activation: "softmax" | "sigmoid" | "none";
+  /** Output indices that count as abuse. The score is the highest of them. */
+  scoreIndices: number[];
+  /** Optional model-specific correction applied to the probabilities before the highest is picked. */
+  adjust?: (probabilities: number[]) => number[];
+  /** Output label names by index, used to report which label gave the score. */
+  labels?: string[];
 }
 
 /** Loads a real .onnx model file from disk and runs it via onnxruntime-node. */
@@ -66,13 +79,35 @@ export class OnnxToxicityClassifier implements Classifier {
   constructor(private readonly session: OnnxSession, private readonly config: OnnxClassifierConfig) {}
 
   async classify(message: Message): Promise<ClassificationResult> {
-    const { inputIds, attentionMask } = this.config.tokenizer.encode(message.text);
-    const dims = [1, inputIds.length];
+    const windows = this.config.tokenizer.encode(message.text);
+    let best: { score: number; index: number } | undefined;
+    for (const window of windows) {
+      const raw = await this.runWindow(window);
+      const probabilities = this.config.adjust ? this.config.adjust(raw) : raw;
+      for (const index of this.config.scoreIndices) {
+        const score = probabilities[index];
+        if (score === undefined) {
+          throw new Error(`score index ${index} is out of range for an output of length ${probabilities.length}`);
+        }
+        if (!best || score > best.score) best = { score, index };
+      }
+    }
+    if (!best) return { toxicityScore: 0, crossesAbuseThreshold: false };
 
+    const label = this.config.labels?.[best.index];
+    return { toxicityScore: best.score, crossesAbuseThreshold: best.score >= ABUSE_THRESHOLD, ...(label ? { label } : {}) };
+  }
+
+  private async runWindow({ inputIds, attentionMask }: TokenizedInput): Promise<number[]> {
+    const dims = [1, inputIds.length];
+    const { inputNames } = this.config;
     const feeds: Record<string, Tensor> = {
-      [this.config.inputNames.inputIds]: new Tensor("int64", inputIds, dims),
-      [this.config.inputNames.attentionMask]: new Tensor("int64", attentionMask, dims),
+      [inputNames.inputIds]: new Tensor("int64", inputIds, dims),
+      [inputNames.attentionMask]: new Tensor("int64", attentionMask, dims),
     };
+    if (inputNames.tokenTypeIds) {
+      feeds[inputNames.tokenTypeIds] = new Tensor("int64", new BigInt64Array(inputIds.length), dims);
+    }
 
     const output = await this.session.run(feeds);
     const outputTensor = output[this.config.outputName];
@@ -81,17 +116,10 @@ export class OnnxToxicityClassifier implements Classifier {
         `model output has no tensor named "${this.config.outputName}" — got: ${Object.keys(output).join(", ")}`,
       );
     }
-
     const values = toNumberArray(outputTensor.data, this.config.outputName);
-    const probabilities = this.config.outputIsLogits ? softmax(values) : values;
-    const toxicityScore = probabilities[this.config.toxicClassIndex];
-    if (toxicityScore === undefined) {
-      throw new Error(
-        `toxicClassIndex ${this.config.toxicClassIndex} is out of range for an output of length ${values.length}`,
-      );
-    }
-
-    return { toxicityScore, crossesAbuseThreshold: toxicityScore >= ABUSE_THRESHOLD };
+    if (this.config.activation === "softmax") return softmax(values);
+    if (this.config.activation === "sigmoid") return values.map((x) => 1 / (1 + Math.exp(-x)));
+    return values;
   }
 }
 
