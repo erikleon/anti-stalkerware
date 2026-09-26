@@ -871,7 +871,7 @@ Changes from the plan, found while building:
 - **A POST rule with no profile page shows no link** instead of its API
   address.
 
-Verified: unit tests for fetch-assets (12), the engine (43), verification
+Verified: unit tests for fetch-assets (12), the engine (42), verification
 (7), the scheduler (13), and the service (7); `osint-online.spec.ts`
 (no network); a packaged macOS build loading the bundled rules.
 
