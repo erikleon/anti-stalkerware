@@ -18,6 +18,8 @@ import type { KnownAccountKind, StoredKnownAccount } from "../vault/known-accoun
 import type { IncidentEntry } from "../vault/incident-log";
 import type { LocalTimeResolution } from "../time/local-time";
 import type { ScoringStatus } from "./scoring";
+import type { PresenceResult } from "../osint/network/username-presence";
+import type { FeedStatus, LinkVerdict } from "../osint/network/link-safety";
 
 export type {
   Bucket,
@@ -31,7 +33,17 @@ export type {
   IncidentEntry,
   LocalTimeResolution,
   ScoringStatus,
+  PresenceResult,
+  FeedStatus,
+  LinkVerdict,
 };
+
+/** What the online OSINT checks contact, for the disclosure shown before each one runs. */
+export interface OsintNetworkInfo {
+  usernameSites: string[];
+  uncheckableSites: string[];
+  linkFeeds: Array<{ name: string; url: string }>;
+}
 
 /** A new incident log entry from the renderer. */
 export interface NewIncidentInput {
@@ -173,6 +185,16 @@ export interface DocketApi {
     checkCandidate(sender: string, candidate: CandidateInput): Promise<RankedLead>;
     /** Compares this sender against every person in the known-accounts list, one lead per person, best first. Same gate and same verify-mode limits as checkCandidate. */
     compareKnownAccounts(sender: string): Promise<RankedLead[]>;
+    /** Static: which sites and lists the online checks contact. Not gated; it says nothing about anyone. */
+    networkInfo(): Promise<OsintNetworkInfo>;
+    /** Links in the sender's messages, checked on the device against built-in lists. No network. */
+    linkReport(sender: string): Promise<LinkVerdict[]>;
+    /** Downloads the public lists in networkInfo().linkFeeds and checks the sender's links against them on the device. Never opens a link. */
+    checkLinksOnline(sender: string): Promise<{ verdicts: LinkVerdict[]; feeds: FeedStatus[] }>;
+    /** Handles worth checking: @mentions in the sender's messages, a handle-like sender, known-account usernames. */
+    usernameSuggestions(sender: string): Promise<string[]>;
+    /** Asks each site in networkInfo().usernameSites whether the handle exists there. */
+    checkUsername(sender: string, handle: string): Promise<PresenceResult[]>;
   };
   knownAccounts: {
     list(): Promise<StoredKnownAccount[]>;

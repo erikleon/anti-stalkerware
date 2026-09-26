@@ -42,6 +42,11 @@ const api: DocketApi = {
     eligibleSenders: () => ipcRenderer.invoke("osint:eligibleSenders"),
     checkCandidate: (sender, candidate) => ipcRenderer.invoke("osint:checkCandidate", sender, candidate),
     compareKnownAccounts: (sender) => ipcRenderer.invoke("osint:compareKnownAccounts", sender),
+    networkInfo: () => ipcRenderer.invoke("osint:networkInfo"),
+    linkReport: (sender) => ipcRenderer.invoke("osint:linkReport", sender),
+    checkLinksOnline: (sender) => ipcRenderer.invoke("osint:checkLinksOnline", sender),
+    usernameSuggestions: (sender) => ipcRenderer.invoke("osint:usernameSuggestions", sender),
+    checkUsername: (sender, handle) => ipcRenderer.invoke("osint:checkUsername", sender, handle),
   },
   knownAccounts: {
     list: () => ipcRenderer.invoke("knownAccounts:list"),

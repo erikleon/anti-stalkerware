@@ -18,6 +18,9 @@ import { readInstagramBlocked } from "../ingest/instagram/blocked";
 import { expandHome } from "./paths";
 import { localTimeZone, resolveLocalDateTime, type LocalTimeResolution } from "../time/local-time";
 import type { ScoringService, ScoringStatus } from "./scoring";
+import { checkUsernamePresence, SITES, suggestHandles, UNCHECKABLE_SITES, type PresenceResult } from "../osint/network/username-presence";
+import { checkLinksOffline, checkLinksOnline, extractLinks, FEEDS, type FeedStatus, type LinkVerdict } from "../osint/network/link-safety";
+import type { Fetcher } from "../osint/network/http";
 import type { IncidentEntry } from "../vault/incident-log";
 import type {
   CandidateInput,
@@ -27,6 +30,7 @@ import type {
   HotkeyStatus,
   ImapConnectionInput,
   KnownAccountImportResult,
+  OsintNetworkInfo,
   NewIncidentInput,
   OsintSenderEligibility,
   RankedLead,
@@ -173,6 +177,36 @@ export function registerHandlers(
     }
     return rankCandidates(compareWithKnownAccounts(knownAccounts, sender, senderMessages, messagesBySender));
   });
+
+  // Online checks. Gated like every other OSINT channel, and started only
+  // by an explicit click after the screen has said what will be contacted.
+  // Requests go from the main process; the renderer's CSP still allows it
+  // no network at all.
+  const fetcher = fetch as unknown as Fetcher;
+  const senderTexts = async (sender: string) =>
+    (await messagesFromSender(requireVault(session).store, sender)).filter((m) => !m.fromSelf).map((m) => m.text);
+
+  bind<[], OsintNetworkInfo>(session, "osint:networkInfo", async () => ({
+    usernameSites: SITES.map((s) => s.name),
+    uncheckableSites: [...UNCHECKABLE_SITES],
+    linkFeeds: FEEDS.map((f) => ({ name: f.name, url: f.url })),
+  }));
+  bindGated<[string], LinkVerdict[]>("osint:linkReport", (sender) => sender, session, async (sender) =>
+    checkLinksOffline(extractLinks(await senderTexts(sender))),
+  );
+  bindGated<[string], { verdicts: LinkVerdict[]; feeds: FeedStatus[] }>("osint:checkLinksOnline", (sender) => sender, session, async (sender) =>
+    checkLinksOnline(extractLinks(await senderTexts(sender)), fetcher),
+  );
+  bindGated<[string], string[]>("osint:usernameSuggestions", (sender) => sender, session, async (sender) => {
+    const knownUsernames = requireVault(session)
+      .knownAccounts.list()
+      .filter((a) => a.kind === "username")
+      .map((a) => a.value);
+    return suggestHandles(sender, await senderTexts(sender), knownUsernames);
+  });
+  bindGated<[string, string], PresenceResult[]>("osint:checkUsername", (sender) => sender, session, async (_sender, handle) =>
+    checkUsernamePresence(handle, fetcher),
+  );
 
   // The user's own list, not OSINT output — not gated. Adding an account
   // here looks nothing up; it only records what the user already knows.
