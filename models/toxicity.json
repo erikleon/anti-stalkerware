@@ -1,8 +1,10 @@
 {
-  "$comment": "The toxicity model docket ships. scripts/fetch-model.mjs downloads these exact files into models/toxicity/ and checks each hash; the packaged app bundles them. Change the revision and hashes together, never one without the other.",
+  "$comment": "The toxicity model docket ships. scripts/fetch-assets.mjs downloads these exact files into models/toxicity/ and checks each hash; installers bundle them. Change the revision and hashes together, never one without the other.",
+  "source": "huggingface",
+  "repo": "minuva/MiniLMv2-toxic-jigsaw-onnx",
   "id": "minuva/MiniLMv2-toxic-jigsaw-onnx",
   "license": "Apache-2.0",
-  "source": "https://huggingface.co/minuva/MiniLMv2-toxic-jigsaw-onnx",
+  "sourceUrl": "https://huggingface.co/minuva/MiniLMv2-toxic-jigsaw-onnx",
   "revision": "c035f27b6a6d68770f8069a4829f1715a48b8d51",
   "model": "model_optimized_quantized.onnx",
   "files": [

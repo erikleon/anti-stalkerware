@@ -141,14 +141,15 @@ Newer npm versions ask before running a package's install scripts
 `better-sqlite3` ships prebuilt binaries for macOS, Windows, and Linux,
 and Electron downloads its own binary the first time it runs.
 
-### The toxicity model
+### Pinned assets (toxicity model, WhatsMyName)
 
-`npm test` and `npm run build` first run `npm run fetch-model`, which
-downloads the model files listed in `models/toxicity.json` (23 MB, from
-a pinned Hugging Face revision) into `models/toxicity/` and checks each
-file's SHA-256. It needs the network once; after that it's a no-op.
-The files aren't committed. Installers bundle them, and the installed
-app never downloads anything.
+`npm test` and `npm run build` first run `npm run fetch-assets`, which
+downloads the files each manifest in `models/` lists (the 23 MB toxicity
+model from a pinned Hugging Face revision; the WhatsMyName site rules
+from a pinned GitHub commit) into `models/<name>/` and checks each
+file's SHA-256. It needs the network once; after that it's a no-op. The
+files aren't committed. Installers bundle them, and the installed app
+never downloads them.
 
 ## Structure
 

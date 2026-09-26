@@ -1,0 +1,22 @@
+{
+  "$comment": "WhatsMyName site rules (https://github.com/WebBreacher/WhatsMyName), CC BY-SA 4.0, bundled unmodified. scripts/fetch-assets.mjs downloads these files into models/whatsmyname/; scripts/verify-whatsmyname.mjs fills passList. Change revision, hashes, and passList together.",
+  "source": "github",
+  "repo": "WebBreacher/WhatsMyName",
+  "license": "CC BY-SA 4.0",
+  "revision": "062bcfe48df79fa618e96edc79dc9673f3fe5643",
+  "files": [
+    {
+      "name": "wmn-data.json",
+      "sha256": "507d2f8aa5b1297ae2d713634ccc7ce08357fed85b1d40130585810f456c1cfe",
+      "bytes": 259104
+    },
+    {
+      "name": "LICENSE.md",
+      "sha256": "3eab49aa5cabc24918c11aab97dfe8873e0641317b898d989c993c4283a4d84b",
+      "bytes": 309
+    }
+  ],
+  "majorPlatforms": [],
+  "passList": [],
+  "verifiedAt": null
+}

@@ -37,14 +37,17 @@ jobs:
 
       - run: npm ci
 
-      # The toxicity model (23 MB), pinned by models/toxicity.json. Cached
-      # by that file's hash, so it's downloaded again only when it changes.
+      # Pinned assets (the 23 MB toxicity model, the WhatsMyName site
+      # rules), listed by the manifests in models/. Cached by the manifests'
+      # hashes, so they're downloaded again only when a pin changes.
       - uses: actions/cache@v4
         with:
-          path: models/toxicity
-          key: toxicity-model-${{ hashFiles('models/toxicity.json') }}
+          path: |
+            models/toxicity
+            models/whatsmyname
+          key: pinned-assets-${{ hashFiles('models/toxicity.json', 'models/whatsmyname.json') }}
 
-      - run: npm run fetch-model
+      - run: npm run fetch-assets
 
       - run: npm run build
 

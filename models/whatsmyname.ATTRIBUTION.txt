@@ -1,0 +1,12 @@
+Site rules for docket's OSINT username check come from WhatsMyName:
+https://github.com/WebBreacher/WhatsMyName
+
+Copyright (C) 2015-2026 Micah Hoffman and the WhatsMyName contributors.
+Licensed under the Creative Commons Attribution-ShareAlike 4.0
+International License (see whatsmyname/LICENSE.md, or
+http://creativecommons.org/licenses/by-sa/4.0/).
+
+docket ships wmn-data.json unmodified, at the commit named in
+whatsmyname.json ("revision"). docket keeps its own list of which rules
+passed its verification (whatsmyname.json, "passList"), and its own
+remove-only skip list, separately from the WhatsMyName data.

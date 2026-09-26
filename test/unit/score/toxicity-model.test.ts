@@ -8,7 +8,7 @@ import type { Message } from "../../../src/types/message";
 
 /**
  * Runs the real, shipped model (models/toxicity, fetched by
- * scripts/fetch-model.mjs, which `npm test` runs first). The examples
+ * scripts/fetch-assets.mjs, which `npm test` runs first). The examples
  * below are the ones the swearing adjustment in toxicity-model.ts was
  * calibrated on; they're checks that the model behaves as documented,
  * not a benchmark.
@@ -125,7 +125,7 @@ describe("loadToxicityModel", () => {
     const dir = mkdtempSync(join(tmpdir(), "docket-model-test-"));
     try {
       cpSync(join(MODELS_DIR, "toxicity.json"), join(dir, "toxicity.json"));
-      await expect(loadToxicityModel(dir)).rejects.toThrow(/is missing .*npm run fetch-model/);
+      await expect(loadToxicityModel(dir)).rejects.toThrow(/is missing .*npm run fetch-assets/);
     } finally {
       removeTestDir(dir);
     }

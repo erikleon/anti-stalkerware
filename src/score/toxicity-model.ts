@@ -11,7 +11,7 @@ import { loadOnnxSession, OnnxToxicityClassifier, type Classifier, type Tokenize
  * labels: toxic, severe_toxic, obscene, threat, insult, identity_hate.
  *
  * Files and hashes are pinned in models/toxicity.json. Developers and CI
- * get them with scripts/fetch-model.mjs; the packaged app bundles them
+ * get them with scripts/fetch-assets.mjs; the packaged app bundles them
  * and never downloads anything. Every file's hash is checked again here,
  * so a damaged or swapped model fails loudly instead of scoring quietly.
  */
@@ -60,7 +60,7 @@ export async function loadToxicityModel(modelsDir: string): Promise<LoadedToxici
     try {
       bytes = await readFile(join(fileDir, file.name));
     } catch (err) {
-      throw new Error(`toxicity model file ${file.name} is missing (${(err as Error).message}). Run: npm run fetch-model`);
+      throw new Error(`toxicity model file ${file.name} is missing (${(err as Error).message}). Run: npm run fetch-assets`);
     }
     const actual = createHash("sha256").update(bytes).digest("hex");
     if (actual !== file.sha256) {

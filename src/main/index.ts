@@ -117,7 +117,7 @@ app.whenReady().then(() => {
   const hotkeyRegistered = registerPanicHotkey(window);
   // The toxicity model ships inside the app (electron-builder.cjs,
   // extraResources); in development it's models/ at the repo root, filled
-  // by `npm run fetch-model`.
+  // by `npm run fetch-assets`.
   const modelsDir = app.isPackaged ? path.join(process.resourcesPath, "models") : path.join(app.getAppPath(), "models");
   const scoring = new ScoringService(modelsDir, () => session.current(), (status) => window.webContents.send("scoring:changed", status));
   registerHandlers(session, settings, window, { registered: hotkeyRegistered, label: PANIC_HOTKEY_LABEL }, scoring);

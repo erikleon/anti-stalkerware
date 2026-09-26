@@ -23,9 +23,9 @@
     "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux",
-    "fetch-model": "node scripts/fetch-model.mjs",
-    "pretest": "npm run fetch-model",
-    "prebuild": "npm run fetch-model"
+    "pretest": "npm run fetch-assets",
+    "prebuild": "npm run fetch-assets",
+    "fetch-assets": "node scripts/fetch-assets.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
