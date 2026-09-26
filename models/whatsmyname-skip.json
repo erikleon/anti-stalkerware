@@ -1,4 +1,105 @@
 {
   "$comment": "Remove-only list of WhatsMyName rule names the app skips, fetched by the app before each username check (from this file on main). It can only turn shipped rules off, never add or change one. The weekly workflow opens a pull request adding newly failing rules; remove entries when the pin is bumped.",
-  "skip": []
+  "skip": [
+    {
+      "name": "asciinema",
+      "reason": "run 1: known handle not found (john: fetch failed; red: fetch failed)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Blogspot",
+      "reason": "run 1: known handle not found (kaikore: unexpected answer (HTTP 302); kalenderimlek: unexpected answer (HTTP 302))",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "codementor",
+      "reason": "run 1: known handle not found (e4c5: blocked by bot protection; juanelfers: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "fotka",
+      "reason": "run 1: known handle not found (Asiaaa17: blocked by bot protection; czaarnullkaaa: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Gab",
+      "reason": "run 1: known handle not found (RealMarjorieGreene: blocked by bot protection; LaurenBoebert: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Justforfans",
+      "reason": "run 1: known handle not found (devinfrancoxxx: not-found; RileyChaux: not-found)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Linktree",
+      "reason": "run 1: random handle zstv78hwy5v1wol1 gave \"unexpected answer (HTTP 406)\"",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Livejournal",
+      "reason": "run 1: random handle zqtxot0hv1niquqv gave \"fetch failed\"",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Mastodon-Chaos.social",
+      "reason": "run 2: random handle z9f2ozsqru412ub7 gave \"timed out\"",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Minecraft List",
+      "reason": "run 1: known handle not found (fear837: timed out; dream: timed out)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Poll Everywhere",
+      "reason": "run 1: known handle not found (josh: blocked by bot protection; jsmith: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Pornhub (User)",
+      "reason": "run 1: known handle not found (viannabi: unexpected answer (HTTP 302); zayed_home: unexpected answer (HTTP 302))",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "RumbleChannel",
+      "reason": "run 1: known handle not found (SaltyCracker: blocked by bot protection; GGreenwald: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "RumbleUser",
+      "reason": "run 1: known handle not found (SimonParkes: blocked by bot protection; djmrmusic: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "setlist.fm",
+      "reason": "run 1: known handle not found (bendobrin: blocked by bot protection; michi: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "solo.to",
+      "reason": "run 1: known handle not found (saruei: blocked by bot protection; yui: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Substack",
+      "reason": "run 1: known handle not found (janellehardacre: blocked by bot protection; janeclairebradley: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "sukebei.nyaa.si",
+      "reason": "run 1: known handle not found (kouhy76: fetch failed; Rektr0: fetch failed)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "TruckersMP",
+      "reason": "run 1: known handle not found (JohnnySOBA: blocked by bot protection; Vasya_Run: blocked by bot protection)",
+      "since": "2026-09-26"
+    },
+    {
+      "name": "Weasyl",
+      "reason": "run 1: known handle not found (weasyl: blocked by bot protection; test: blocked by bot protection)",
+      "since": "2026-09-26"
+    }
+  ]
 }
