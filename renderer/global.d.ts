@@ -130,6 +130,19 @@ declare global {
     | { status: "nonexistent" }
     | { status: "invalid" };
 
+  interface RescoreResult {
+    scored: number;
+    crossed: number;
+    failed: number;
+  }
+
+  interface ScoringStatus {
+    state: "idle" | "loading" | "scoring" | "ready" | "error";
+    modelVersion?: string;
+    error?: string;
+    lastRun?: RescoreResult;
+  }
+
   interface IncidentRevision {
     revision: number;
     writtenAt: Date;
@@ -226,6 +239,10 @@ declare global {
     };
     support: {
       hotkeyStatus(): Promise<HotkeyStatus>;
+    };
+    scoring: {
+      status(): Promise<ScoringStatus>;
+      onStatus(callback: (status: ScoringStatus) => void): () => void;
     };
     triage: {
       listRows(bucket: Bucket): Promise<TriageRow[]>;

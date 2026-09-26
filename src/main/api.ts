@@ -17,6 +17,7 @@ import type { OsintSignal } from "../osint/graph";
 import type { KnownAccountKind, StoredKnownAccount } from "../vault/known-accounts";
 import type { IncidentEntry } from "../vault/incident-log";
 import type { LocalTimeResolution } from "../time/local-time";
+import type { ScoringStatus } from "./scoring";
 
 export type {
   Bucket,
@@ -29,6 +30,7 @@ export type {
   StoredKnownAccount,
   IncidentEntry,
   LocalTimeResolution,
+  ScoringStatus,
 };
 
 /** A new incident log entry from the renderer. */
@@ -147,6 +149,12 @@ export interface DocketApi {
     isUnlocked(): Promise<boolean>;
     /** Fires when the main process auto-locks the vault after inactivity — the one push (not request/response) channel in this API, since the renderer can't poll for something main decides on its own timer. Returns an unsubscribe function. */
     onLocked(callback: () => void): () => void;
+  };
+  scoring: {
+    /** Where the background toxicity-model pass is: loading, scoring, ready (with the last pass's counts), or error (with why). */
+    status(): Promise<ScoringStatus>;
+    /** Fires when that status changes. Returns an unsubscribe function. */
+    onStatus(callback: (status: ScoringStatus) => void): () => void;
   };
   support: {
     /** Whether the panic-hide hotkey actually got registered with the OS at launch, and which combo — see main/index.ts's registerPanicHotkey. Not vault-gated. */

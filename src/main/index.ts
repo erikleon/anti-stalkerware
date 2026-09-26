@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { VaultSession } from "./vault-session";
 import { SettingsStore } from "./settings-store";
 import { registerHandlers } from "./handlers";
+import { ScoringService } from "./scoring";
 
 // Neutral product name and icon are set at the packaging level (electron-builder
 // config, not here) — nothing in this file should print or log the product's
@@ -112,8 +113,14 @@ app.whenReady().then(() => {
   const settings = new SettingsStore(settingsPath);
 
   mainWindow = createWindow();
-  const hotkeyRegistered = registerPanicHotkey(mainWindow);
-  registerHandlers(session, settings, mainWindow, { registered: hotkeyRegistered, label: PANIC_HOTKEY_LABEL });
+  const window = mainWindow;
+  const hotkeyRegistered = registerPanicHotkey(window);
+  // The toxicity model ships inside the app (electron-builder.cjs,
+  // extraResources); in development it's models/ at the repo root, filled
+  // by `npm run fetch-model`.
+  const modelsDir = app.isPackaged ? path.join(process.resourcesPath, "models") : path.join(app.getAppPath(), "models");
+  const scoring = new ScoringService(modelsDir, () => session.current(), (status) => window.webContents.send("scoring:changed", status));
+  registerHandlers(session, settings, window, { registered: hotkeyRegistered, label: PANIC_HOTKEY_LABEL }, scoring);
   registerAutoLock(session, settings, mainWindow);
 
   app.on("before-quit", () => session.lock());

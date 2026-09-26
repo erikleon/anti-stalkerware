@@ -8,6 +8,17 @@ export async function renderSettingsScreen(
   lockNow: () => void,
 ): Promise<void> {
   const settings = await window.docket.settings.get();
+  let scoring = await window.docket.scoring.status();
+  // Kept only while this screen is showing; the next render replaces it.
+  const stopWatching = window.docket.scoring.onStatus((status) => {
+    if (!container.isConnected) {
+      stopWatching();
+      return;
+    }
+    scoring = status;
+    const line = container.querySelector("#scoring-status");
+    if (line) line.textContent = describeScoring(status);
+  });
   let sources = await window.docket.settings.listSources();
   let syncingSource: SourceKind | undefined;
 
@@ -94,6 +105,13 @@ export async function renderSettingsScreen(
     );
     pane.append(autoLockRow);
 
+    pane.append(
+      el("div", { class: "field" }, [
+        el("label", {}, ["Toxicity model (runs on this device)"]),
+        el("p", { id: "scoring-status", "aria-live": "polite" }, [describeScoring(scoring)]),
+      ]),
+    );
+
     const lockNowBtn = el("button", { type: "button", class: "btn btn--inline" }, ["Lock now"]);
     lockNowBtn.addEventListener("click", lockNow);
     pane.append(lockNowBtn);
@@ -125,4 +143,23 @@ export async function renderSettingsScreen(
   }
 
   draw();
+}
+
+function describeScoring(status: ScoringStatus): string {
+  switch (status.state) {
+    case "idle":
+      return "Not run yet.";
+    case "loading":
+      return "Loading the model…";
+    case "scoring":
+      return "Scoring messages…";
+    case "error":
+      return `The model couldn't run, so messages aren't being scored: ${status.error ?? "unknown error"}`;
+    case "ready": {
+      const run = status.lastRun;
+      if (!run || run.scored + run.failed === 0) return "Up to date. Every message has been scored.";
+      const failed = run.failed > 0 ? ` ${run.failed} couldn't be scored.` : "";
+      return `Scored ${run.scored} message${run.scored === 1 ? "" : "s"}; ${run.crossed} crossed the abuse threshold.${failed}`;
+    }
+  }
 }

@@ -17,6 +17,7 @@ import * as onboarding from "./onboarding";
 import { readInstagramBlocked } from "../ingest/instagram/blocked";
 import { expandHome } from "./paths";
 import { localTimeZone, resolveLocalDateTime, type LocalTimeResolution } from "../time/local-time";
+import type { ScoringService, ScoringStatus } from "./scoring";
 import type { IncidentEntry } from "../vault/incident-log";
 import type {
   CandidateInput,
@@ -91,14 +92,34 @@ function bindGated<Args extends unknown[], Result>(
 }
 
 /** Registers every IPC channel the renderer can call — the concrete implementation behind window.docket (api.ts / preload.ts). */
-export function registerHandlers(session: VaultSession, settings: SettingsStore, mainWindow: BrowserWindow, hotkeyStatus: HotkeyStatus): void {
+export function registerHandlers(
+  session: VaultSession,
+  settings: SettingsStore,
+  mainWindow: BrowserWindow,
+  hotkeyStatus: HotkeyStatus,
+  scoring: ScoringService,
+): void {
+  /** Runs an import, then scores what it added in the background. The import result never waits on the model. */
+  async function importThenScore(run: () => Promise<SyncResult>): Promise<SyncResult> {
+    const result = await run();
+    void scoring.scoreVault();
+    return result;
+  }
+
   // Not vault-gated — the Support screen reads this from the lock screen
   // too, before any passphrase, same as its other content.
   bind<[], HotkeyStatus>(session, "support:hotkeyStatus", async () => hotkeyStatus);
 
   bind<[], boolean>(session, "vault:exists", async () => session.exists());
   bind<[string], UnlockResult>(session, "vault:initialize", async (passphrase) => ({ ok: await session.initialize(passphrase) }));
-  bind<[string], UnlockResult>(session, "vault:unlock", async (passphrase) => ({ ok: await session.unlock(passphrase) }));
+  bind<[string], UnlockResult>(session, "vault:unlock", async (passphrase) => {
+    const ok = await session.unlock(passphrase);
+    // Scores anything the current model hasn't: a vault from before the
+    // model shipped, or everything after a model change.
+    if (ok) void scoring.scoreVault();
+    return { ok };
+  });
+  bind<[], ScoringStatus>(session, "scoring:status", async () => scoring.status());
   bind<[], void>(session, "vault:lock", async () => session.lock());
   bind<[], boolean>(session, "vault:isUnlocked", async () => session.isUnlocked());
 
@@ -236,7 +257,7 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
     return { ...response, instagramBlocked: { count: igBlocked.usernames.length, skipped: igBlocked.skipped } };
   });
   bind<[string, string[]], SyncResult>(session, "onboarding:connectInstagram", async (exportDir, selected) =>
-    onboarding.connectInstagram(requireVault(session), exportDir, selected),
+    importThenScore(() => onboarding.connectInstagram(requireVault(session), exportDir, selected)),
   );
   bind<[string], { added: number; alreadyKnown: number; skipped: number }>(session, "onboarding:importInstagramBlocked", async (exportDir) =>
     onboarding.importInstagramBlocked(requireVault(session).knownAccounts, exportDir),
@@ -249,15 +270,17 @@ export function registerHandlers(session: VaultSession, settings: SettingsStore,
     onboarding.saveBlockedAsKnown(requireVault(session).knownAccounts, identifiers),
   );
   bind<[string, string[]], SyncResult>(session, "onboarding:connectImessage", async (dbPath, selected) =>
-    onboarding.connectImessage(requireVault(session), dbPath, selected),
+    importThenScore(() => onboarding.connectImessage(requireVault(session), dbPath, selected)),
   );
   bind<[string, string[]], SyncResult>(session, "onboarding:connectAndroidSms", async (exportFilePath, selected) =>
-    onboarding.connectAndroidSms(requireVault(session), exportFilePath, selected),
+    importThenScore(() => onboarding.connectAndroidSms(requireVault(session), exportFilePath, selected)),
   );
   bind<[ImapConnectionInput, string[]], SyncResult>(session, "onboarding:connectImap", async (connection, selected) =>
-    onboarding.connectImapSource(requireVault(session), connection, selected),
+    importThenScore(() => onboarding.connectImapSource(requireVault(session), connection, selected)),
   );
-  bind<[SourceKind], SyncResult>(session, "onboarding:syncNow", async (source) => onboarding.syncNow(requireVault(session), source));
+  bind<[SourceKind], SyncResult>(session, "onboarding:syncNow", async (source) =>
+    importThenScore(() => onboarding.syncNow(requireVault(session), source)),
+  );
   bind<[SourceKind], void>(session, "onboarding:disconnect", async (source) => onboarding.disconnect(requireVault(session), source));
 
   bind<[], StoredBoundary[]>(session, "userContext:listBoundaries", async () => requireVault(session).userContext.listBoundaries());

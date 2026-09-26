@@ -133,6 +133,15 @@ function navigate(screen: Screen): void {
 // Main decides an idle lockout on its own timer — nothing here is polling
 // for it, so it has to be pushed. Re-running boot() is safe from any
 // screen: it just re-checks vault existence and shows the lock screen.
+// When a background scoring pass finds new scores, redraw Triage so its
+// bands and reasons update. Only Triage: other screens can hold a
+// half-typed form, and they read fresh data each time they open anyway.
+window.docket.scoring.onStatus((status) => {
+  if (status.state === "ready" && (status.lastRun?.scored ?? 0) > 0 && state.kind === "unlocked" && state.screen === "triage") {
+    render();
+  }
+});
+
 window.docket.vault.onLocked(() => {
   void boot("Locked after inactivity.");
 });

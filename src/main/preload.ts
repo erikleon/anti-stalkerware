@@ -20,6 +20,14 @@ const api: DocketApi = {
       return () => ipcRenderer.removeListener("vault:locked", listener);
     },
   },
+  scoring: {
+    status: () => ipcRenderer.invoke("scoring:status"),
+    onStatus: (callback) => {
+      const listener = (_event: unknown, status: Parameters<typeof callback>[0]) => callback(status);
+      ipcRenderer.on("scoring:changed", listener);
+      return () => ipcRenderer.removeListener("scoring:changed", listener);
+    },
+  },
   support: {
     hotkeyStatus: () => ipcRenderer.invoke("support:hotkeyStatus"),
   },
