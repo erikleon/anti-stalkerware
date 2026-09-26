@@ -41,7 +41,8 @@ describe("verifyRules", () => {
 
   it("fails when no known handle is found", async () => {
     const [verdict] = await verifyRules([rule], siteFetcher({}), { randomHandle: fixedRandom });
-    expect(verdict).toMatchObject({ passed: false, reason: expect.stringContaining("known handle not found") });
+    // Both known handles came back "missing": the rule would tell a user a real account doesn't exist.
+    expect(verdict).toMatchObject({ passed: false, failure: "wrong", reason: expect.stringContaining("known handle not found") });
   });
 
   it("fails when a random handle comes back found (the rule can't tell accounts apart)", async () => {
@@ -50,23 +51,23 @@ describe("verifyRules", () => {
     }).rules[0]!;
     const fetcher: PageFetcher = async () => ({ status: 200, body: (async function* () { yield Buffer.from("anything"); })() });
     const [verdict] = await verifyRules([found], fetcher, { randomHandle: fixedRandom });
-    expect(verdict).toMatchObject({ passed: false, reason: expect.stringContaining('gave "found"') });
+    expect(verdict).toMatchObject({ passed: false, failure: "wrong", reason: expect.stringContaining('gave "found"') });
   });
 
   it("fails a rule that is blocked, rather than passing it on a technicality", async () => {
     const [verdict] = await verifyRules([rule], siteFetcher({ alice: "blocked", gone: "blocked" }), { randomHandle: fixedRandom });
-    expect(verdict).toMatchObject({ passed: false, reason: expect.stringContaining("blocked by bot protection") });
+    expect(verdict).toMatchObject({ passed: false, failure: "unclear", reason: expect.stringContaining("blocked by bot protection") });
   });
 
   it("fails a rule that only works once (the second run catches flukes)", async () => {
     const [verdict] = await verifyRules([rule], siteFetcher({ gone: "missing", alice: ["found", "blocked"] }), { randomHandle: fixedRandom });
-    expect(verdict).toMatchObject({ passed: false, reason: expect.stringContaining("run 2") });
+    expect(verdict).toMatchObject({ passed: false, failure: "unclear", reason: expect.stringContaining("run 2") });
   });
 
   it("fails a rule with no known handles instead of skipping the test", async () => {
     const bare = parseRules({ sites: [{ name: "Bare", uri_check: "https://example.com/u/{account}", e_code: 200, e_string: "", m_code: 404, m_string: "", known: [], cat: "social" }] }).rules[0]!;
     const [verdict] = await verifyRules([bare], siteFetcher({}));
-    expect(verdict).toEqual({ name: "Bare", passed: false, reason: "no known handle to test with" });
+    expect(verdict).toEqual({ name: "Bare", passed: false, failure: "unclear", reason: "no known handle to test with" });
   });
 });
 

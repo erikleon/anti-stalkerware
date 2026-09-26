@@ -19,6 +19,14 @@ export interface RuleVerdict {
   passed: boolean;
   /** Why it failed, for the report. */
   reason?: string;
+  /**
+   * How it failed. "wrong": the rule gave a false answer (a real account
+   * reported missing, or a random name reported found) — it would mislead
+   * a user. "unclear": no clear answer (blocked, rate limited, network
+   * error, unexpected page) — often about where the test ran from; in the
+   * app it shows as an honest "couldn't tell".
+   */
+  failure?: "wrong" | "unclear";
 }
 
 export interface VerifyOptions {
@@ -48,7 +56,7 @@ async function ask(fetcher: PageFetcher, rule: SiteRule, handle: string, timeout
 
 async function verifyOne(fetcher: PageFetcher, rule: SiteRule, options: Required<Omit<VerifyOptions, "onProgress">>): Promise<RuleVerdict> {
   const known = rule.known.slice(0, 2);
-  if (known.length === 0) return { name: rule.name, passed: false, reason: "no known handle to test with" };
+  if (known.length === 0) return { name: rule.name, passed: false, failure: "unclear", reason: "no known handle to test with" };
 
   for (let run = 1; run <= options.runs; run++) {
     const answers: string[] = [];
@@ -61,12 +69,20 @@ async function verifyOne(fetcher: PageFetcher, rule: SiteRule, options: Required
         break;
       }
     }
-    if (!found) return { name: rule.name, passed: false, reason: `run ${run}: known handle not found (${answers.join("; ")})` };
+    if (!found) {
+      // One known account can simply have been deleted. Every known account
+      // answering "missing" means the rule would tell a user a real account
+      // doesn't exist.
+      const lied = answers.every((a) => a.endsWith(": not-found"));
+      return { name: rule.name, passed: false, failure: lied ? "wrong" : "unclear", reason: `run ${run}: known handle not found (${answers.join("; ")})` };
+    }
 
     for (let i = 0; i < 2; i++) {
       const handle = options.randomHandle();
       const answer = await ask(fetcher, rule, handle, options.timeoutMs);
-      if (answer !== "not-found") return { name: rule.name, passed: false, reason: `run ${run}: random handle ${handle} gave "${answer}"` };
+      if (answer !== "not-found") {
+        return { name: rule.name, passed: false, failure: answer === "found" ? "wrong" : "unclear", reason: `run ${run}: random handle ${handle} gave "${answer}"` };
+      }
     }
   }
   return { name: rule.name, passed: true };

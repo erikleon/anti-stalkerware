@@ -6,8 +6,16 @@
 //                                                # writes passList and verifiedAt
 //                                                # into models/whatsmyname.json
 //   node scripts/verify-whatsmyname.mjs --check  # weekly: leaves the manifest alone,
-//                                                # adds shipped rules that now fail
-//                                                # to models/whatsmyname-skip.json
+//                                                # adds shipped rules that now give
+//                                                # WRONG answers to
+//                                                # models/whatsmyname-skip.json
+//
+// The weekly run skips only rules that give wrong answers (a real account
+// reported missing, a random name reported found). Rules that merely
+// couldn't answer are left alone: GitHub's servers get blocked by far more
+// sites than a home connection does (20 failures there vs 2 from a home
+// connection on 2026-09-26), and in the app such a site shows an honest
+// "couldn't tell" rather than a false answer.
 //
 // Either way it writes a report to models/whatsmyname-report.md (not
 // committed) listing every failure and why.
@@ -46,8 +54,11 @@ writeFileSync(
     "",
     `Revision ${loaded.manifest.revision}. ${passed.length} passed, ${failed.length} failed, ${loaded.dropped.length} dropped before testing.`,
     "",
-    "## Failed",
-    ...failed.map((v) => `- ${v.name}: ${v.reason}`),
+    "## Failed: wrong answers (skipped by --check)",
+    ...failed.filter((v) => v.failure === "wrong").map((v) => `- ${v.name}: ${v.reason}`),
+    "",
+    "## Failed: no clear answer from where this ran (not skipped by --check)",
+    ...failed.filter((v) => v.failure !== "wrong").map((v) => `- ${v.name}: ${v.reason}`),
     "",
     "## Dropped (validation)",
     ...loaded.dropped.map((d) => `- ${d.name}: ${d.reason}`),
@@ -58,7 +69,9 @@ writeFileSync(
 if (checkOnly) {
   const skip = JSON.parse(readFileSync(skipPath, "utf8"));
   const already = new Set(skip.skip.map((s) => s.name));
-  const added = failed.filter((v) => !already.has(v.name)).map((v) => ({ name: v.name, reason: v.reason, since: today }));
+  const wrong = failed.filter((v) => v.failure === "wrong");
+  const added = wrong.filter((v) => !already.has(v.name)).map((v) => ({ name: v.name, reason: v.reason, since: today }));
+  console.log(`${failed.length - wrong.length} shipped rules couldn't answer from here (not skipped; see the report).`);
   skip.skip.push(...added);
   writeFileSync(skipPath, JSON.stringify(skip, null, 2) + "\n");
   console.log(`${added.length} newly failing shipped rules added to the skip list.`);
