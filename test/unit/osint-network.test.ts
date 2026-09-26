@@ -16,9 +16,8 @@ function fakeFetcher(responses: Record<string, { status: number; body?: string }
     }
     if (!response) return { status: 404, text: async () => "" };
     return { status: response.status, text: async () => response.body ?? "" };
-  }) as Fetcher & { requested: string[] };
-  fetcher.requested = requested;
-  return fetcher;
+  }) as Fetcher;
+  return Object.assign(fetcher, { requested });
 }
 
 describe("normalizeHandle", () => {

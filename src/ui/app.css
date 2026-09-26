@@ -757,3 +757,33 @@
   color: var(--text-dim);
   cursor: pointer;
 }
+
+/* OSINT online checks */
+
+.content-pane .subsection-heading {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.content-pane .network-notice {
+  font-size: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.link-finding {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+

@@ -8,6 +8,20 @@ const SIGNAL_LABEL: Record<OsintSignalKind, string> = {
   "writing-style-match": "Writing style",
 };
 
+const FINDING_LABEL: Record<LinkFinding, string> = {
+  "ip-logger": "IP logger",
+  shortener: "Short link",
+  malicious: "Malware",
+  phishing: "Phishing",
+};
+
+const FINDING_MEANING: Record<LinkFinding, string> = {
+  "ip-logger": "Opening it would show the sender your IP address and rough location.",
+  shortener: "It hides where it really goes, and is often used to wrap an IP logger.",
+  malicious: "It's on a list of links that spread malware.",
+  phishing: "It's on a list of fake login pages.",
+};
+
 const KIND_LABEL: Record<KnownAccountKind, string> = {
   phone: "Phone",
   email: "Email",
@@ -28,18 +42,20 @@ const ORIGIN_LABEL: Record<KnownAccountOrigin, string> = {
  * list: accounts the user already knows belong to someone harassing them,
  * usually ones they blocked.
  *
- * Unlocked state is verify-mode, not search-mode (see DESIGN.md's OSINT
- * collector decision). Two tools, both local-only:
- *   - Compare with known accounts: checks the sender against every person
- *     in the known-accounts list at once — shared identifiers, and writing
+ * Unlocked state has two local tools and two online ones:
+ *   - Compare with known accounts (local): checks the sender against every
+ *     person in the known-accounts list — shared identifiers, and writing
  *     style against that person's own messages already in the vault.
- *   - Check a candidate: the user names one person they suspect and gives
- *     what they know (a username, email, phone, or a pasted writing
- *     sample).
- * Neither can look anyone up from a bare identifier; there is no "find
- * out who this is" button here, on purpose. Every check runs against
- * vault data already on this device — no network call — which is why
- * this screen makes no "generates internet traffic" claim.
+ *   - Check a candidate (local): the user names one person they suspect
+ *     and gives what they know.
+ *   - Links in their messages (online on request): built-in IP-logger and
+ *     shortener lists offline; public threat lists downloaded on click.
+ *     Links are never opened or sent anywhere.
+ *   - Where does a username exist? (online on request): asks a fixed set
+ *     of sites whether a handle is taken. Added 2026-09-25 by the owner's
+ *     decision, reversing the earlier local-only stance; see DESIGN.md.
+ * Each online check says exactly what it contacts before it runs, and
+ * runs only on a click. All four stay behind the abuse-threshold gate.
  */
 export async function renderOsintScreen(container: Element): Promise<void> {
   let unlockedFor: string | undefined;
@@ -49,6 +65,16 @@ export async function renderOsintScreen(container: Element): Promise<void> {
   let knownError: string | undefined;
   let importNote: string | undefined;
 
+  // Online checks, per unlocked sender.
+  let networkInfo: OsintNetworkInfo | undefined;
+  let linkVerdicts: LinkVerdict[] = [];
+  let linkFeeds: FeedStatus[] | undefined;
+  let linkError: string | undefined;
+  let suggestions: string[] = [];
+  let handleDraft = "";
+  let presence: { handle: string; results: PresenceResult[] } | undefined;
+  let presenceError: string | undefined;
+
   const eligibility = await window.docket.osint.eligibleSenders();
   let known = await window.docket.knownAccounts.list();
 
@@ -57,11 +83,54 @@ export async function renderOsintScreen(container: Element): Promise<void> {
     draw();
   }
 
-  function unlock(sender: string): void {
+  async function unlock(sender: string): Promise<void> {
     unlockedFor = sender;
     checked = [];
     compared = undefined;
     error = undefined;
+    linkFeeds = undefined;
+    linkError = undefined;
+    presence = undefined;
+    presenceError = undefined;
+    try {
+      // Nothing here touches the network: the static list of what the
+      // online checks would contact, the offline link check, and handle
+      // suggestions from the sender's own messages.
+      [networkInfo, linkVerdicts, suggestions] = await Promise.all([
+        window.docket.osint.networkInfo(),
+        window.docket.osint.linkReport(sender),
+        window.docket.osint.usernameSuggestions(sender),
+      ]);
+      handleDraft = suggestions[0] ?? "";
+    } catch (err) {
+      error = ipcErrorMessage(err);
+    }
+    draw();
+  }
+
+  async function checkLinks(sender: string, button: HTMLButtonElement): Promise<void> {
+    linkError = undefined;
+    button.disabled = true;
+    button.textContent = "Downloading lists…";
+    try {
+      const result = await window.docket.osint.checkLinksOnline(sender);
+      linkVerdicts = result.verdicts;
+      linkFeeds = result.feeds;
+    } catch (err) {
+      linkError = ipcErrorMessage(err);
+    }
+    draw();
+  }
+
+  async function checkUsername(sender: string, handle: string, button: HTMLButtonElement): Promise<void> {
+    presenceError = undefined;
+    button.disabled = true;
+    button.textContent = "Checking…";
+    try {
+      presence = { handle, results: await window.docket.osint.checkUsername(sender, handle) };
+    } catch (err) {
+      presenceError = ipcErrorMessage(err);
+    }
     draw();
   }
 
@@ -247,7 +316,7 @@ export async function renderOsintScreen(container: Element): Promise<void> {
           e.eligible ? "Check" : "Locked",
         ]) as HTMLButtonElement;
         if (!e.eligible) btn.disabled = true;
-        btn.addEventListener("click", () => unlock(e.sender));
+        btn.addEventListener("click", () => void unlock(e.sender));
         row.append(btn);
         list.append(row);
       }
@@ -286,11 +355,131 @@ export async function renderOsintScreen(container: Element): Promise<void> {
     }
   }
 
+  function drawLinks(pane: HTMLElement, sender: string): void {
+    pane.append(el("h3", { class: "subsection-heading" }, ["Links in their messages"]));
+    if (linkVerdicts.length === 0) {
+      pane.append(el("p", {}, ["There are no links in their messages."]));
+      return;
+    }
+    pane.append(
+      el("p", {}, [
+        "Don't open these. An IP-logging link shows its owner where you are the moment it loads. This check never opens them either.",
+      ]),
+    );
+    const list = el("div", { class: "list-block" });
+    for (const verdict of linkVerdicts) {
+      const row = el("div", { class: "list-block-row" });
+      row.append(el("div", { class: "list-block-row-title selectable", style: "overflow-wrap:anywhere;" }, [verdict.link.text]));
+      if (verdict.findings.length === 0) {
+        row.append(el("div", { class: "list-block-row-sub" }, [linkFeeds ? "Not on any list that was checked." : "Not on the built-in lists."]));
+      }
+      // One line per kind of finding, naming every list that agreed.
+      const sourcesByKind = new Map<LinkFinding, string[]>();
+      for (const finding of verdict.findings) sourcesByKind.set(finding.kind, [...(sourcesByKind.get(finding.kind) ?? []), finding.source]);
+      for (const [kind, sources] of sourcesByKind) {
+        row.append(
+          el("div", { class: "list-block-row-sub link-finding" }, [
+            el("span", { class: `badge ${kind === "shortener" ? "badge--medium" : "badge--high"}` }, [FINDING_LABEL[kind]]),
+            ` ${FINDING_MEANING[kind]} Listed by: ${sources.join(", ")}.`,
+          ]),
+        );
+      }
+      list.append(row);
+    }
+    pane.append(list);
+
+    if (!linkFeeds) {
+      const feeds = networkInfo?.linkFeeds ?? [];
+      pane.append(
+        el("p", { class: "network-notice" }, [
+          `Checking against public threat lists downloads ${feeds.length} lists from their publishers (${feeds.map((f) => f.name).join("; ")}) over your internet connection, then compares the links on this device. The links themselves aren't sent anywhere.`,
+        ]),
+      );
+      const button = el("button", { type: "button", class: "btn btn--inline" }, ["Check against public threat lists"]) as HTMLButtonElement;
+      button.addEventListener("click", () => void checkLinks(sender, button));
+      pane.append(button);
+    } else {
+      const failed = linkFeeds.filter((f) => !f.ok);
+      pane.append(
+        el("p", { style: "font-size:12px;" }, [
+          failed.length === 0
+            ? `Checked against ${linkFeeds.length} public lists.`
+            : `Checked against ${linkFeeds.length - failed.length} of ${linkFeeds.length} lists. Not checked: ${failed.map((f) => `${f.name} (${f.detail})`).join("; ")}.`,
+        ]),
+      );
+    }
+    if (linkError) pane.append(el("p", { class: "field-error" }, [linkError]));
+  }
+
+  function drawUsername(pane: HTMLElement, sender: string): void {
+    const sites = networkInfo?.usernameSites ?? [];
+    pane.append(
+      el("h3", { class: "subsection-heading" }, ["Where does a username exist?"]),
+      el("p", {}, [
+        "Checks whether an account with this exact name exists on other sites. A match only means the name is taken there. It doesn't show that it's the same person.",
+      ]),
+    );
+
+    const input = el("input", { type: "text", id: "osint-handle", list: "osint-handle-suggestions", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
+    input.value = handleDraft;
+    const datalist = el("datalist", { id: "osint-handle-suggestions" }, suggestions.map((h) => el("option", { value: h })));
+    const button = el("button", { type: "button", class: "btn btn--inline" }, [`Check ${sites.length} sites`]) as HTMLButtonElement;
+    const valid = (value: string) => /^@?[A-Za-z0-9][A-Za-z0-9._-]{1,39}$/.test(value.trim());
+    button.disabled = !valid(input.value);
+    input.addEventListener("input", () => {
+      handleDraft = input.value;
+      button.disabled = !valid(input.value);
+    });
+    button.addEventListener("click", () => void checkUsername(sender, input.value.trim().replace(/^@/, ""), button));
+
+    pane.append(
+      el("div", { class: "field" }, [el("label", { for: "osint-handle" }, ["Username"]), input, datalist]),
+      el("p", { class: "network-notice" }, [
+        `This sends the username to ${sites.length} sites over your internet connection, and each of them can see your IP address: ${sites.join(", ")}. Not checked, because they only answer after a login: ${(networkInfo?.uncheckableSites ?? []).join(", ")}.`,
+      ]),
+      button,
+    );
+    if (presenceError) pane.append(el("p", { class: "field-error" }, [presenceError]));
+
+    if (presence) {
+      const order = { found: 0, unknown: 1, "not-found": 2 } as const;
+      const list = el("div", { class: "list-block" });
+      for (const result of [...presence.results].sort((a, b) => order[a.status] - order[b.status])) {
+        const row = el("div", { class: "list-block-row" });
+        row.append(
+          el("div", { class: "list-block-row-title" }, [result.site]),
+          el("div", { class: "list-block-row-sub" }, [
+            result.status === "found"
+              ? "An account with this name exists."
+              : result.status === "not-found"
+                ? "No account with this name."
+                : `Couldn't tell${result.detail ? ` (${result.detail})` : ""}.`,
+          ]),
+        );
+        if (result.status === "found") row.append(el("div", { class: "list-block-row-sub selectable", style: "overflow-wrap:anywhere;" }, [result.profileUrl]));
+        list.append(row);
+      }
+      const found = presence.results.filter((r) => r.status === "found").length;
+      pane.append(el("p", { style: "font-size:12px;" }, [`"${presence.handle}": taken on ${found} of ${presence.results.length} sites.`]), list);
+    }
+  }
+
+  function drawOnlineChecks(pane: HTMLElement, sender: string): void {
+    pane.append(
+      el("h2", { class: "section-heading" }, ["Online checks"]),
+      el("p", {}, [
+        "These are the only parts of the app that use the internet, and each one runs only when you click it. Nothing from your messages is sent except what each button names.",
+      ]),
+    );
+    drawLinks(pane, sender);
+    drawUsername(pane, sender);
+  }
+
   function drawUnlocked(pane: HTMLElement, sender: string): void {
     pane.append(
       el("h1", { style: "margin:0 0 8px;" }, [`OSINT for ${sender}`]),
       el("p", {}, [
-        "These tools can only confirm or weaken a link you already suspect, using messages already in your vault. They can't search for who someone is, and they never make a network call. Results are unverified leads, never a confirmed identity, and are structurally barred from any evidence export.",
+        "Results here are unverified leads, never a confirmed identity, and are structurally barred from any evidence export. The first two tools use only messages already on this device. The online checks below use the internet, only when you click them.",
       ]),
     );
 
@@ -338,6 +527,9 @@ export async function renderOsintScreen(container: Element): Promise<void> {
     if (checked.length > 0) {
       pane.append(el("h2", { class: "section-heading" }, ["Checked so far"]), leadList(checked));
     }
+
+    // Online checks last, after both local tools.
+    drawOnlineChecks(pane, sender);
 
     const back = el("a", { href: "#", style: "font-size:12px;color:var(--text-dim);display:block;" }, ["← Back to senders"]);
     back.addEventListener("click", (e) => {

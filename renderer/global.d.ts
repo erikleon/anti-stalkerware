@@ -130,6 +130,32 @@ declare global {
     | { status: "nonexistent" }
     | { status: "invalid" };
 
+  interface OsintNetworkInfo {
+    usernameSites: string[];
+    uncheckableSites: string[];
+    linkFeeds: Array<{ name: string; url: string }>;
+  }
+
+  type LinkFinding = "ip-logger" | "shortener" | "malicious" | "phishing";
+
+  interface LinkVerdict {
+    link: { text: string; host: string; normalized: string };
+    findings: Array<{ kind: LinkFinding; source: string }>;
+  }
+
+  interface FeedStatus {
+    name: string;
+    ok: boolean;
+    detail: string;
+  }
+
+  interface PresenceResult {
+    site: string;
+    profileUrl: string;
+    status: "found" | "not-found" | "unknown";
+    detail?: string;
+  }
+
   interface RescoreResult {
     scored: number;
     crossed: number;
@@ -255,6 +281,11 @@ declare global {
       eligibleSenders(): Promise<OsintSenderEligibility[]>;
       checkCandidate(sender: string, candidate: CandidateInput): Promise<RankedLead>;
       compareKnownAccounts(sender: string): Promise<RankedLead[]>;
+      networkInfo(): Promise<OsintNetworkInfo>;
+      linkReport(sender: string): Promise<LinkVerdict[]>;
+      checkLinksOnline(sender: string): Promise<{ verdicts: LinkVerdict[]; feeds: FeedStatus[] }>;
+      usernameSuggestions(sender: string): Promise<string[]>;
+      checkUsername(sender: string, handle: string): Promise<PresenceResult[]>;
     };
     knownAccounts: {
       list(): Promise<StoredKnownAccount[]>;
