@@ -36,4 +36,4 @@ list (D11). Full plan: ~/.claude/plans/2026-09-26-whatsmyname.md.
 ## Critical Paths
 - Import a threat → model flags it → OSINT opens → check a handle → results grouped with the caveat that a taken name isn't the same person.
 - Pin bump: run scripts/verify-whatsmyname.mjs → manifest's verified list changes → CI green → installer bundles the pinned file (check release/…/Resources/models).
-- Weekly workflow: failing sites open or update one GitHub issue; test.yml unaffected.
+- Weekly workflow: newly failing sites produce a PR updating models/whatsmyname-skip.json; test.yml unaffected.
