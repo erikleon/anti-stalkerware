@@ -1,0 +1,53 @@
+name: WhatsMyName weekly check
+
+# Re-tests the WhatsMyName rules docket ships (models/whatsmyname.json
+# passList) against the live sites, from GitHub's servers, never a user's
+# machine. Rules that stopped working are added to
+# models/whatsmyname-skip.json in a pull request for a person to review;
+# once merged, the app skips them on its next username check. Separate
+# from test.yml on purpose: a flaky website must never block CI or a
+# release.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            models/toxicity
+            models/whatsmyname
+          key: pinned-assets-${{ hashFiles('models/toxicity.json', 'models/whatsmyname.json') }}
+
+      - run: npm run build
+
+      - id: verify
+        run: node scripts/verify-whatsmyname.mjs --check
+
+      - name: Open a pull request for newly broken sites
+        if: steps.verify.outputs.added != '0'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/whatsmyname-skip
+          add-paths: models/whatsmyname-skip.json
+          commit-message: Skip WhatsMyName rules that stopped working
+          title: Skip WhatsMyName rules that stopped working
+          body-path: models/whatsmyname-report.md
+          delete-branch: true
