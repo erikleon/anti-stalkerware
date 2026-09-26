@@ -47,3 +47,73 @@ export async function mapLimited<T, R>(items: readonly T[], limit: number, task:
   await Promise.all(workers);
   return results;
 }
+
+/** A response as fetchPage needs it: a status and a body it can read in chunks. */
+export interface PageResponse {
+  status: number;
+  body: AsyncIterable<Uint8Array> | null;
+}
+
+export type PageFetcher = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: string; redirect: "manual"; signal: AbortSignal },
+) => Promise<PageResponse>;
+
+export interface PageRequest {
+  url: string;
+  method: "GET" | "POST";
+  headers: Record<string, string>;
+  body?: string;
+}
+
+export type PageResult = { ok: true; status: number; body: string } | { ok: false; error: string };
+
+/**
+ * True for a host a request may go to: a DNS name with at least one dot
+ * that isn't an IP address, localhost, or a local-only name. Rules come
+ * from outside data, and a redirect is chosen by the site; neither may
+ * point a victim's request at their own network or machine.
+ */
+export function isPublicHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  if (!host.includes(".")) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":") || host.startsWith("[")) return false;
+  return !/(^|\.)(localhost|local|internal|lan|home|arpa)$/.test(host);
+}
+
+/**
+ * One request for a site rule. Redirects are never followed: like
+ * WhatsMyName's own checker, the first response is the answer (75 rules
+ * read a 3xx status as "found" or "missing"), and nothing a site sends
+ * back can move the request to another host. The body is read in chunks
+ * up to `maxBytes`. Never throws; a failure comes back as `{ ok: false }`
+ * with a reason a person can read.
+ */
+export async function fetchPage(fetcher: PageFetcher, request: PageRequest, signal: AbortSignal, maxBytes = 1024 * 1024): Promise<PageResult> {
+  try {
+    const parsed = new URL(request.url);
+    if (parsed.protocol !== "https:" || !isPublicHostname(parsed.hostname)) return { ok: false, error: "unsafe address" };
+
+    const response = await fetcher(request.url, {
+      method: request.method,
+      headers: { "User-Agent": BROWSER_UA, Accept: "text/html,application/json;q=0.9,*/*;q=0.8", ...request.headers },
+      ...(request.body !== undefined ? { body: request.body } : {}),
+      redirect: "manual",
+      signal,
+    });
+
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for await (const chunk of response.body ?? []) {
+      total += chunk.length;
+      if (total > maxBytes) return { ok: false, error: "page too large" };
+      chunks.push(chunk);
+    }
+    return { ok: true, status: response.status, body: new TextDecoder().decode(Buffer.concat(chunks)) };
+  } catch (err) {
+    const name = (err as Error).name;
+    if (name === "AbortError") return { ok: false, error: signal.reason === "timeout" ? "out of time" : "stopped" };
+    if (name === "TimeoutError") return { ok: false, error: "timed out" };
+    return { ok: false, error: (err as Error).message };
+  }
+}
