@@ -49,6 +49,10 @@ describe("parseRules", () => {
     expect(dropped).toEqual([{ name: "Example", reason }]);
   });
 
+  it("keeps a rule whose only protection is a user-agent check (docket sends a browser one)", () => {
+    expect(onlyRule({ protection: ["user-agent"] }).name).toBe("Example");
+  });
+
   it("keeps a handle in the host only as a subdomain of a fixed domain", () => {
     expect(onlyRule({ uri_check: "https://{account}.tumblr.com/" }).uriCheck).toBe("https://{account}.tumblr.com/");
   });

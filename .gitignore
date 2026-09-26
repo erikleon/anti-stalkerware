@@ -20,3 +20,4 @@ coverage/
 
 # Downloaded model files (see models/*.json for what and from where)
 models/*/
+models/whatsmyname-report.md

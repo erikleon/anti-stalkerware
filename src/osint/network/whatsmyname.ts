@@ -90,7 +90,10 @@ function urlProblem(template: string): string | undefined {
 
 function ruleProblem(rule: WmnRule): string | undefined {
   if (rule.valid === false) return "marked broken upstream";
-  if (rule.protection && rule.protection.length > 0) return `behind bot protection (${rule.protection.join(", ")})`;
+  // "user-agent" only means the site turns away non-browser clients, and
+  // docket sends a browser identity; verification decides if it works.
+  const protection = (rule.protection ?? []).filter((p) => p !== "user-agent");
+  if (protection.length > 0) return `behind bot protection (${protection.join(", ")})`;
   if (typeof rule.uri_check !== "string") return "no URL";
   const url = urlProblem(rule.uri_check);
   if (url) return url;
