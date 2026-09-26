@@ -21,6 +21,7 @@ const base = [
   "!docs/**/*",
   "!scripts/**/*",
   "!release/**/*",
+  "!models/**/*",
   "!build/**/*",
   "!*.md",
   "!package-lock.json",
@@ -49,6 +50,9 @@ module.exports = {
   directories: { output: "release", buildResources: "build" },
   files: base,
   asarUnpack: ["**/*.node"],
+  // The toxicity model, as plain files next to the app (process.resourcesPath/models),
+  // not inside app.asar: onnxruntime opens the .onnx file by path.
+  extraResources: [{ from: "models", to: "models", filter: ["toxicity.json", "toxicity/**"] }],
   // Both native modules ship prebuilt N-API binaries that load in any
   // Node or Electron version; rebuilding would compile better-sqlite3
   // from source for nothing.
