@@ -48,12 +48,26 @@ test("online checks show offline link warnings and say what they'd contact befor
 
     const handle = window.getByLabel("Username", { exact: true });
     await expect(handle).toHaveValue("new_acct_2");
-    await expect(window.getByText("each of them can see your IP address", { exact: false })).toBeVisible();
-    await expect(window.getByText("Not checked, because they only answer after a login: Instagram", { exact: false })).toBeVisible();
-    const checkSites = window.getByRole("button", { name: /Check \d+ sites/ });
-    await expect(checkSites).toBeEnabled();
+
+    // Default tier: named sites, and the major platforms whose rules failed testing named too.
+    const major = window.getByRole("button", { name: /Check \d+ major platforms/ });
+    await expect(major).toBeEnabled();
+    const majorNotice = window.locator(".network-notice", { hasText: "each of them can see your IP address" });
+    await expect(majorNotice).toContainText("GitHub (User)");
+    await expect(window.getByText("Not checked, because their rules didn't pass docket's testing: Instagram", { exact: false })).toBeVisible();
+
+    // The sweep: a count, and the sensitive-category checkbox raises it.
+    const sweep = window.getByRole("button", { name: /Check all \d+ sites/ });
+    const before = Number((await sweep.textContent())!.match(/\d+/)![0]);
+    await window.getByLabel(/Also check dating, adult, health, and political sites/).check();
+    const after = Number((await sweep.textContent())!.match(/\d+/)![0]);
+    expect(after).toBeGreaterThan(before);
+
+    await expect(window.getByText(/Site rules: WhatsMyName .* CC BY-SA 4\.0, commit [0-9a-f]{7}/)).toBeVisible();
+
     await handle.fill("not a handle!");
-    await expect(checkSites).toBeDisabled();
+    await expect(major).toBeDisabled();
+    await expect(sweep).toBeDisabled();
 
     await app.close();
   } finally {

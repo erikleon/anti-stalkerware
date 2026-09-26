@@ -72,8 +72,44 @@ export async function renderOsintScreen(container: Element): Promise<void> {
   let linkError: string | undefined;
   let suggestions: string[] = [];
   let handleDraft = "";
-  let presence: { handle: string; results: PresenceResult[] } | undefined;
+  let includeSensitive = false;
   let presenceError: string | undefined;
+  // The running or last username check. Progress events update it and
+  // redraw only the results area, so the handle field isn't rebuilt
+  // while someone is typing.
+  let usernameCheck:
+    | {
+        checkId: number;
+        handle: string;
+        tier: "major" | "all";
+        total: number;
+        done: number;
+        finished: boolean;
+        outcomes: SiteOutcome[];
+        notChecked: NotChecked[];
+        note?: string;
+      }
+    | undefined;
+
+  const stopWatchingProgress = window.docket.osint.onUsernameProgress((progress) => {
+    if (!container.isConnected) {
+      // The user left the OSINT screen: stop the check and stop listening.
+      stopWatchingProgress();
+      void window.docket.osint.stopUsernameCheck(progress.checkId);
+      return;
+    }
+    if (!usernameCheck || usernameCheck.checkId !== progress.checkId) return;
+    usernameCheck.done = progress.done;
+    if (progress.outcome) usernameCheck.outcomes.push(progress.outcome);
+    if (progress.finished) {
+      // A full redraw re-enables the buttons only if the handle is still valid.
+      usernameCheck.finished = true;
+      draw();
+      return;
+    }
+    const region = container.querySelector("#username-results");
+    if (region) region.replaceWith(usernameResults());
+  });
 
   const eligibility = await window.docket.osint.eligibleSenders();
   let known = await window.docket.knownAccounts.list();
@@ -90,7 +126,8 @@ export async function renderOsintScreen(container: Element): Promise<void> {
     error = undefined;
     linkFeeds = undefined;
     linkError = undefined;
-    presence = undefined;
+    if (usernameCheck && !usernameCheck.finished) void window.docket.osint.stopUsernameCheck(usernameCheck.checkId);
+    usernameCheck = undefined;
     presenceError = undefined;
     try {
       // Nothing here touches the network: the static list of what the
@@ -122,12 +159,22 @@ export async function renderOsintScreen(container: Element): Promise<void> {
     draw();
   }
 
-  async function checkUsername(sender: string, handle: string, button: HTMLButtonElement): Promise<void> {
+  async function startUsernameCheck(sender: string, handle: string, tier: "major" | "all"): Promise<void> {
     presenceError = undefined;
-    button.disabled = true;
-    button.textContent = "Checking…";
+    container.querySelectorAll<HTMLButtonElement>(".username-start").forEach((button) => (button.disabled = true));
     try {
-      presence = { handle, results: await window.docket.osint.checkUsername(sender, handle) };
+      const started = await window.docket.osint.startUsernameCheck(sender, { handle, tier, includeSensitive: tier === "all" && includeSensitive });
+      usernameCheck = {
+        checkId: started.checkId,
+        handle,
+        tier,
+        total: started.total,
+        done: 0,
+        finished: started.total === 0,
+        outcomes: [],
+        notChecked: started.notChecked,
+        ...(started.note ? { note: started.note } : {}),
+      };
     } catch (err) {
       presenceError = ipcErrorMessage(err);
     }
@@ -411,57 +458,123 @@ export async function renderOsintScreen(container: Element): Promise<void> {
     if (linkError) pane.append(el("p", { class: "field-error" }, [linkError]));
   }
 
+  /** The results area of the username check; rebuilt on each progress event. */
+  function usernameResults(): HTMLElement {
+    const region = el("div", { id: "username-results", class: "username-results", "aria-live": "polite" });
+    const check = usernameCheck;
+    if (!check) return region;
+
+    const found = check.outcomes.filter((o) => o.status === "found");
+    const unknown = check.outcomes.filter((o) => o.status === "unknown");
+    const missing = check.outcomes.filter((o) => o.status === "not-found");
+
+    if (!check.finished) {
+      const stop = el("button", { type: "button", class: "btn btn--inline" }, ["Stop"]);
+      stop.addEventListener("click", () => void window.docket.osint.stopUsernameCheck(check.checkId));
+      region.append(el("div", { class: "username-progress" }, [el("span", {}, [`Checking "${check.handle}": ${check.done} of ${check.total} sites…`]), stop]));
+    } else {
+      region.append(el("p", { style: "font-size:12px;" }, [`"${check.handle}": taken on ${found.length} of ${check.total} sites checked.`]));
+    }
+    if (check.note) region.append(el("p", { style: "font-size:12px;" }, [check.note]));
+
+    if (found.length > 0) {
+      const list = el("div", { class: "list-block" });
+      for (const outcome of found) {
+        list.append(
+          el("div", { class: "list-block-row" }, [
+            el("div", { class: "list-block-row-title" }, [outcome.site]),
+            el("div", { class: "list-block-row-sub" }, ["An account with this name exists."]),
+            ...(outcome.profileUrl ? [el("div", { class: "list-block-row-sub selectable", style: "overflow-wrap:anywhere;" }, [outcome.profileUrl])] : []),
+          ]),
+        );
+      }
+      region.append(list);
+    } else if (check.finished) {
+      region.append(el("div", { class: "empty-state" }, ["No site that answered clearly has an account with this name."]));
+    }
+
+    const detailList = (summary: string, rows: string[]) =>
+      el("details", { class: "revision-history" }, [el("summary", {}, [summary]), el("ul", { class: "plain-list" }, rows.map((r) => el("li", {}, [r])))]);
+    if (unknown.length > 0) region.append(detailList(`Couldn't tell on ${unknown.length} site${unknown.length === 1 ? "" : "s"}`, unknown.map((o) => `${o.site}: ${o.detail ?? "no clear answer"}`)));
+    if (missing.length > 0) region.append(detailList(`No account on ${missing.length} site${missing.length === 1 ? "" : "s"}`, missing.map((o) => o.site)));
+    if (check.notChecked.length > 0) region.append(detailList(`Not checked: ${check.notChecked.length}`, check.notChecked.map((n) => `${n.name}: ${n.reason}`)));
+    return region;
+  }
+
   function drawUsername(pane: HTMLElement, sender: string): void {
-    const sites = networkInfo?.usernameSites ?? [];
     pane.append(
       el("h3", { class: "subsection-heading" }, ["Where does a username exist?"]),
       el("p", {}, [
         "Checks whether an account with this exact name exists on other sites. A match only means the name is taken there. It doesn't show that it's the same person.",
       ]),
     );
+    const info = networkInfo?.username;
+    if (!info) {
+      pane.append(el("p", { class: "field-error" }, [`The username check isn't available: ${networkInfo?.usernameError ?? "its site rules didn't load"}`]));
+      return;
+    }
 
     const input = el("input", { type: "text", id: "osint-handle", list: "osint-handle-suggestions", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
     input.value = handleDraft;
     const datalist = el("datalist", { id: "osint-handle-suggestions" }, suggestions.map((h) => el("option", { value: h })));
-    const button = el("button", { type: "button", class: "btn btn--inline" }, [`Check ${sites.length} sites`]) as HTMLButtonElement;
     const valid = (value: string) => /^@?[A-Za-z0-9][A-Za-z0-9._-]{1,39}$/.test(value.trim());
-    button.disabled = !valid(input.value);
+    const running = usernameCheck !== undefined && !usernameCheck.finished;
+
+    const majorButton = el("button", { type: "button", class: "btn btn--inline username-start" }, [`Check ${info.majorSites.length} major platforms`]) as HTMLButtonElement;
+    const sweepCount = () => info.allCount + (includeSensitive ? info.sensitiveCount : 0);
+    const sweepButton = el("button", { type: "button", class: "btn btn--inline username-start" }, [`Check all ${sweepCount()} sites`]) as HTMLButtonElement;
+    const refresh = () => {
+      const disabled = running || !valid(input.value);
+      majorButton.disabled = disabled;
+      sweepButton.disabled = disabled;
+      sweepButton.textContent = `Check all ${sweepCount()} sites`;
+    };
     input.addEventListener("input", () => {
       handleDraft = input.value;
-      button.disabled = !valid(input.value);
+      refresh();
     });
-    button.addEventListener("click", () => void checkUsername(sender, input.value.trim().replace(/^@/, ""), button));
+    const handle = () => input.value.trim().replace(/^@/, "");
+    majorButton.addEventListener("click", () => void startUsernameCheck(sender, handle(), "major"));
+    sweepButton.addEventListener("click", () => void startUsernameCheck(sender, handle(), "all"));
+
+    const sensitive = el("input", { type: "checkbox", id: "osint-sensitive" }) as HTMLInputElement;
+    sensitive.checked = includeSensitive;
+    sensitive.addEventListener("change", () => {
+      includeSensitive = sensitive.checked;
+      refresh();
+    });
+    refresh();
+
+    const categories = Object.entries(info.categories)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, n]) => `${cat} ${n}`)
+      .join(", ");
+    const notChecked = info.majorNotChecked.map((n) => n.name).join(", ");
 
     pane.append(
       el("div", { class: "field" }, [el("label", { for: "osint-handle" }, ["Username"]), input, datalist]),
       el("p", { class: "network-notice" }, [
-        `This sends the username to ${sites.length} sites over your internet connection, and each of them can see your IP address: ${sites.join(", ")}. Not checked, because they only answer after a login: ${(networkInfo?.uncheckableSites ?? []).join(", ")}.`,
+        `Sends the username to these ${info.majorSites.length} sites over your internet connection, and each of them can see your IP address: ${info.majorSites.join(", ")}.${notChecked ? ` Not checked, because their rules didn't pass docket's testing: ${notChecked}.` : ""}`,
       ]),
-      button,
+      majorButton,
+      el("p", { class: "network-notice" }, [
+        `Or check every site in WhatsMyName's list that passed docket's testing: ${info.allCount} sites (${categories}). It can take up to 3 minutes, and every one of those sites sees your IP address.`,
+      ]),
+      el("label", { class: "choice sensitive-choice", for: "osint-sensitive" }, [
+        sensitive,
+        el("span", {}, [
+          `Also check dating, adult, health, and political sites (${info.sensitiveCount} more). Off by default: a match there says something private about whoever owns the name, who may not be the person harassing you.`,
+        ]),
+      ]),
+      sweepButton,
     );
     if (presenceError) pane.append(el("p", { class: "field-error" }, [presenceError]));
-
-    if (presence) {
-      const order = { found: 0, unknown: 1, "not-found": 2 } as const;
-      const list = el("div", { class: "list-block" });
-      for (const result of [...presence.results].sort((a, b) => order[a.status] - order[b.status])) {
-        const row = el("div", { class: "list-block-row" });
-        row.append(
-          el("div", { class: "list-block-row-title" }, [result.site]),
-          el("div", { class: "list-block-row-sub" }, [
-            result.status === "found"
-              ? "An account with this name exists."
-              : result.status === "not-found"
-                ? "No account with this name."
-                : `Couldn't tell${result.detail ? ` (${result.detail})` : ""}.`,
-          ]),
-        );
-        if (result.status === "found") row.append(el("div", { class: "list-block-row-sub selectable", style: "overflow-wrap:anywhere;" }, [result.profileUrl]));
-        list.append(row);
-      }
-      const found = presence.results.filter((r) => r.status === "found").length;
-      pane.append(el("p", { style: "font-size:12px;" }, [`"${presence.handle}": taken on ${found} of ${presence.results.length} sites.`]), list);
-    }
+    pane.append(usernameResults());
+    pane.append(
+      el("p", { class: "attribution" }, [
+        `Site rules: ${info.attribution.source}, ${info.attribution.license}, commit ${info.attribution.revision.slice(0, 7)}${info.attribution.verifiedAt ? `, tested by docket on ${info.attribution.verifiedAt}` : ""}.`,
+      ]),
+    );
   }
 
   function drawOnlineChecks(pane: HTMLElement, sender: string): void {

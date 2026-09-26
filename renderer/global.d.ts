@@ -131,8 +131,8 @@ declare global {
     | { status: "invalid" };
 
   interface OsintNetworkInfo {
-    usernameSites: string[];
-    uncheckableSites: string[];
+    username?: UsernameCheckInfo;
+    usernameError?: string;
     linkFeeds: Array<{ name: string; url: string }>;
   }
 
@@ -149,11 +149,47 @@ declare global {
     detail: string;
   }
 
-  interface PresenceResult {
+  interface NotChecked {
+    name: string;
+    reason: string;
+  }
+
+  interface SiteOutcome {
     site: string;
-    profileUrl: string;
+    category: string;
+    profileUrl?: string;
     status: "found" | "not-found" | "unknown";
     detail?: string;
+  }
+
+  interface UsernameCheckInfo {
+    majorSites: string[];
+    majorNotChecked: NotChecked[];
+    allCount: number;
+    sensitiveCount: number;
+    categories: Record<string, number>;
+    attribution: { source: string; license: string; revision: string; verifiedAt: string | null };
+  }
+
+  interface CheckRequest {
+    handle: string;
+    tier: "major" | "all";
+    includeSensitive: boolean;
+  }
+
+  interface StartedCheck {
+    checkId: number;
+    total: number;
+    notChecked: NotChecked[];
+    note?: string;
+  }
+
+  interface UsernameProgress {
+    checkId: number;
+    done: number;
+    total: number;
+    outcome?: SiteOutcome;
+    finished: boolean;
   }
 
   interface RescoreResult {
@@ -285,7 +321,9 @@ declare global {
       linkReport(sender: string): Promise<LinkVerdict[]>;
       checkLinksOnline(sender: string): Promise<{ verdicts: LinkVerdict[]; feeds: FeedStatus[] }>;
       usernameSuggestions(sender: string): Promise<string[]>;
-      checkUsername(sender: string, handle: string): Promise<PresenceResult[]>;
+      startUsernameCheck(sender: string, request: CheckRequest): Promise<StartedCheck>;
+      stopUsernameCheck(checkId: number): Promise<void>;
+      onUsernameProgress(callback: (progress: UsernameProgress) => void): () => void;
     };
     knownAccounts: {
       list(): Promise<StoredKnownAccount[]>;
